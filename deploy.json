@@ -1,0 +1,10 @@
+{
+  "name": "deploy",
+  "version": "1.0.0",
+  "scripts": {
+    "deploy:vercel": "vercel --prod",
+    "deploy:netlify": "npm run build && npx netlify deploy --prod --dir=build",
+    "deploy:aws": "npm run build && aws s3 sync build/ s3://your-bucket-name --delete",
+    "preview": "npm run build && npx serve -s build -l 3000"
+  }
+}

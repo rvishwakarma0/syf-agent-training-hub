@@ -1,0 +1,8 @@
+{
+  "short_name": "Synchrony Hub",
+  "name": "Synchrony Agent Training Hub",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#003DA5",
+  "background_color": "#ffffff"
+}

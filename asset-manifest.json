@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/syf-agent-training-hub/static/css/main.be500e8f.css",
+    "main.js": "/syf-agent-training-hub/static/js/main.005fecc3.js",
+    "index.html": "/syf-agent-training-hub/index.html",
+    "main.be500e8f.css.map": "/syf-agent-training-hub/static/css/main.be500e8f.css.map",
+    "main.005fecc3.js.map": "/syf-agent-training-hub/static/js/main.005fecc3.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.be500e8f.css",
+    "static/js/main.005fecc3.js"
+  ]
+}

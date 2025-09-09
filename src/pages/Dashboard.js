@@ -49,6 +49,13 @@ function Dashboard() {
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [selectedScenario, setSelectedScenario] = useState('');
 
+  // Mock batches data
+  const mockBatches = [
+    { id: 1, name: 'Batch Alpha', agents: 8, status: 'Active', created: '2025-09-01' },
+    { id: 2, name: 'Batch Beta', agents: 12, status: 'Completed', created: '2025-08-15' },
+    { id: 3, name: 'Batch Gamma', agents: 10, status: 'Active', created: '2025-09-05' },
+  ];
+
   const scenarios = [
     { value: 'billing_issue', label: 'Billing Issue', difficulty: 6 },
     { value: 'customer_complaint', label: 'Customer Complaint', difficulty: 8 },
@@ -312,6 +319,11 @@ function Dashboard() {
             }}
           >
             <Tab 
+              label={`All Batches (${mockBatches.length})`}
+              icon={<PeopleIcon />}
+              iconPosition="start"
+            />
+            <Tab 
               label={`All Agents (${state.agents.length})`}
               icon={<PeopleIcon />}
               iconPosition="start"
@@ -330,191 +342,242 @@ function Dashboard() {
         </Box>
       </motion.div>
 
-      {/* Agents Grid */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.6, delay: 0.4 }}
-      >
-        <Grid container spacing={3}>
-          {filteredAgents
-            .filter(agent => {
-              if (tabValue === 1) return agent.status === 'training';
-              if (tabValue === 2) return agent.status === 'available';
-              return true; // All agents
-            })
-            .map((agent, index) => (
-            <Grid item xs={12} sm={6} lg={4} key={agent.id}>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-              >
-                <Card
-                  sx={{
-                    p: 3,
-                    height: '100%',
-                    background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
-                    border: '1px solid #e9ecef',
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer',
-                    '&:hover': {
-                      transform: 'translateY(-8px)',
-                      boxShadow: '0 15px 40px rgba(0, 61, 165, 0.12)',
-                    },
-                  }}
-                  onClick={() => handleAgentClick(agent.id)}
-                >
-                  <Box sx={{ textAlign: 'center', mb: 3 }}>
-                    <Avatar
-                      sx={{
-                        width: 80,
-                        height: 80,
-                        mx: 'auto',
-                        mb: 2,
-                        fontSize: '2rem',
-                        background: 'linear-gradient(135deg, #003DA5 0%, #002B5C 100%)',
-                      }}
-                    >
-                      {agent.avatar}
-                    </Avatar>
-                    
-                    <Typography
-                      variant="h6"
-                      sx={{
-                        fontWeight: 600,
-                        mb: 1,
-                        color: '#003DA5',
-                      }}
-                    >
-                      {agent.name}
+      {/* Batches Grid (All Batches Tab) */}
+      {tabValue === 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+        >
+          <Card sx={{ mb: 4, p: 3 }}>
+            <Typography variant="h6" sx={{ mb: 2, color: '#003DA5', fontWeight: 600 }}>
+              Batches
+            </Typography>
+            <Grid container spacing={2}>
+              {mockBatches.map((batch) => (
+                <Grid item xs={12} md={6} lg={4} key={batch.id}>
+                  <Card
+                    sx={{
+                      p: 2,
+                      border: '1px solid #e9ecef',
+                      background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)',
+                    }}
+                  >
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#003DA5' }}>
+                      {batch.name}
                     </Typography>
-                    
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: '#6c757d',
-                        mb: 2,
-                      }}
-                    >
-                      {agent.department} • {agent.level}
+                    <Typography variant="body2" sx={{ color: '#6c757d', mb: 1 }}>
+                      Agents: {batch.agents}
                     </Typography>
-                    
                     <Chip
-                      label={getStatusLabel(agent.status)}
+                      label={batch.status}
                       size="small"
                       sx={{
-                        backgroundColor: getStatusColor(agent.status),
-                        color: agent.status === 'session' ? '#003DA5' : 'white',
+                        backgroundColor: batch.status === 'Active' ? '#28a745' : '#6c757d',
+                        color: 'white',
                         fontWeight: 500,
-                        position: 'relative',
-                        '&::before': agent.status === 'training' || agent.status === 'session' ? {
-                          content: '""',
-                          position: 'absolute',
-                          top: -2,
-                          left: -2,
-                          right: -2,
-                          bottom: -2,
-                          background: getStatusColor(agent.status),
-                          borderRadius: 'inherit',
-                          opacity: 0.3,
-                          animation: 'pulse 2s infinite',
-                        } : {},
+                        mb: 1,
                       }}
                     />
-                  </Box>
-                  
-                  <Box sx={{ mb: 3 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="body2" sx={{ color: '#6c757d' }}>
-                        Empathy Score
+                    <Typography variant="caption" sx={{ color: '#6c757d' }}>
+                      Created: {batch.created}
+                    </Typography>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Agents Grid */}
+      {tabValue !== 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+        >
+          <Grid container spacing={3}>
+            {filteredAgents
+              .filter(agent => {
+                if (tabValue === 1) return true; // All agents
+                if (tabValue === 2) return agent.status === 'training';
+                if (tabValue === 3) return agent.status === 'available';
+                return true;
+              })
+              .map((agent, index) => (
+              <Grid item xs={12} sm={6} lg={4} key={agent.id}>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                >
+                  <Card
+                    sx={{
+                      p: 3,
+                      height: '100%',
+                      background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
+                      border: '1px solid #e9ecef',
+                      transition: 'all 0.3s ease',
+                      cursor: 'pointer',
+                      '&:hover': {
+                        transform: 'translateY(-8px)',
+                        boxShadow: '0 15px 40px rgba(0, 61, 165, 0.12)',
+                      },
+                    }}
+                    onClick={() => handleAgentClick(agent.id)}
+                  >
+                    <Box sx={{ textAlign: 'center', mb: 3 }}>
+                      <Avatar
+                        sx={{
+                          width: 80,
+                          height: 80,
+                          mx: 'auto',
+                          mb: 2,
+                          fontSize: '2rem',
+                          background: 'linear-gradient(135deg, #003DA5 0%, #002B5C 100%)',
+                        }}
+                      >
+                        {agent.avatar}
+                      </Avatar>
+                      
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          fontWeight: 600,
+                          mb: 1,
+                          color: '#003DA5',
+                        }}
+                      >
+                        {agent.name}
                       </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: '#003DA5' }}>
-                        {agent.empathyScore}%
+                      
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: '#6c757d',
+                          mb: 2,
+                        }}
+                      >
+                        {agent.department} • {agent.level}
                       </Typography>
+                      
+                      <Chip
+                        label={getStatusLabel(agent.status)}
+                        size="small"
+                        sx={{
+                          backgroundColor: getStatusColor(agent.status),
+                          color: agent.status === 'session' ? '#003DA5' : 'white',
+                          fontWeight: 500,
+                          position: 'relative',
+                          '&::before': agent.status === 'training' || agent.status === 'session' ? {
+                            content: '""',
+                            position: 'absolute',
+                            top: -2,
+                            left: -2,
+                            right: -2,
+                            bottom: -2,
+                            background: getStatusColor(agent.status),
+                            borderRadius: 'inherit',
+                            opacity: 0.3,
+                            animation: 'pulse 2s infinite',
+                          } : {},
+                        }}
+                      />
                     </Box>
-                    <LinearProgress
-                      variant="determinate"
-                      value={agent.empathyScore}
-                      sx={{
-                        height: 8,
-                        borderRadius: 4,
-                        backgroundColor: '#e9ecef',
-                        '& .MuiLinearProgress-bar': {
-                          background: 'linear-gradient(90deg, #003DA5 0%, #FFD100 100%)',
-                          borderRadius: 4,
-                        },
-                      }}
-                    />
-                  </Box>
-                  
-                  {agent.status === 'training' || agent.status === 'session' ? (
-                    <Box sx={{ textAlign: 'center', mb: 2 }}>
-                      <Typography variant="body2" sx={{ color: '#6c757d', mb: 1 }}>
-                        Session Duration
-                      </Typography>
-                      <Typography variant="h6" sx={{ color: '#28a745', fontWeight: 600 }}>
-                        {agent.sessionDuration}
-                      </Typography>
-                    </Box>
-                  ) : (
-                    <Box sx={{ textAlign: 'center', mb: 2 }}>
-                      <Typography variant="body2" sx={{ color: '#6c757d', mb: 1 }}>
-                        Last Active
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: '#6c757d' }}>
-                        {agent.lastActive || 'Just now'}
-                      </Typography>
-                    </Box>
-                  )}
-                  
-                  <Box sx={{ display: 'flex', gap: 1, mt: 'auto' }}>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      startIcon={<ViewIcon />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAgentClick(agent.id);
-                      }}
-                      sx={{
-                        borderColor: '#003DA5',
-                        color: '#003DA5',
-                        '&:hover': {
-                          borderColor: '#002B5C',
-                          backgroundColor: 'rgba(0, 61, 165, 0.05)',
-                        },
-                      }}
-                    >
-                      View
-                    </Button>
                     
-                    {agent.status === 'available' && (
+                    <Box sx={{ mb: 3 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" sx={{ color: '#6c757d' }}>
+                          Empathy Score
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#003DA5' }}>
+                          {agent.empathyScore}%
+                        </Typography>
+                      </Box>
+                      <LinearProgress
+                        variant="determinate"
+                        value={agent.empathyScore}
+                        sx={{
+                          height: 8,
+                          borderRadius: 4,
+                          backgroundColor: '#e9ecef',
+                          '& .MuiLinearProgress-bar': {
+                            background: 'linear-gradient(90deg, #003DA5 0%, #FFD100 100%)',
+                            borderRadius: 4,
+                          },
+                        }}
+                      />
+                    </Box>
+                    
+                    {agent.status === 'training' || agent.status === 'session' ? (
+                      <Box sx={{ textAlign: 'center', mb: 2 }}>
+                        <Typography variant="body2" sx={{ color: '#6c757d', mb: 1 }}>
+                          Session Duration
+                        </Typography>
+                        <Typography variant="h6" sx={{ color: '#28a745', fontWeight: 600 }}>
+                          {agent.sessionDuration}
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Box sx={{ textAlign: 'center', mb: 2 }}>
+                        <Typography variant="body2" sx={{ color: '#6c757d', mb: 1 }}>
+                          Last Active
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: '#6c757d' }}>
+                          {agent.lastActive || 'Just now'}
+                        </Typography>
+                      </Box>
+                    )}
+                    
+                    <Box sx={{ display: 'flex', gap: 1, mt: 'auto' }}>
                       <Button
                         fullWidth
-                        variant="contained"
-                        startIcon={<PlayIcon />}
+                        variant="outlined"
+                        startIcon={<ViewIcon />}
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleStartTraining(agent);
+                          handleAgentClick(agent.id);
                         }}
                         sx={{
-                          background: 'linear-gradient(135deg, #003DA5 0%, #002B5C 100%)',
+                          borderColor: '#003DA5',
+                          color: '#003DA5',
                           '&:hover': {
-                            background: 'linear-gradient(135deg, #002B5C 0%, #001B3C 100%)',
+                            borderColor: '#002B5C',
+                            backgroundColor: 'rgba(0, 61, 165, 0.05)',
                           },
                         }}
                       >
-                        Train
+                        View
                       </Button>
-                    )}
-                  </Box>
-                </Card>
-              </motion.div>
-            </Grid>
-          ))}
-        </Grid>
-      </motion.div>
+                      
+                      {agent.status === 'available' && (
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          startIcon={<PlayIcon />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStartTraining(agent);
+                          }}
+                          sx={{
+                            background: 'linear-gradient(135deg, #003DA5 0%, #002B5C 100%)',
+                            '&:hover': {
+                              background: 'linear-gradient(135deg, #002B5C 0%, #001B3C 100%)',
+                            },
+                          }}
+                        >
+                          Train
+                        </Button>
+                      )}
+                    </Box>
+                  </Card>
+                </motion.div>
+              </Grid>
+            ))}
+          </Grid>
+        </motion.div>
+      )}
 
       {/* Start Training Dialog */}
       <Dialog

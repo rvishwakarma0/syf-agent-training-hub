@@ -23,7 +23,11 @@ import {
   Help as HelpIcon,
   ChevronLeft as ChevronLeftIcon,
   Home as HomeIcon,
+  AirlineSeatLegroomNormalOutlined,
+  AccessTime,
 } from '@mui/icons-material';
+import { useSearchParams } from 'react-router-dom';
+
 import { motion } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
 
@@ -31,39 +35,62 @@ const DRAWER_WIDTH = 280;
 const DRAWER_WIDTH_COLLAPSED = 80;
 
 function Sidebar({ open, onToggle }) {
+  const [searchParams] = useSearchParams();
+  const role = searchParams.get('role'); // e.g., 'admin'
   const navigate = useNavigate();
   const location = useLocation();
   const { state } = useApp();
 
-  const menuItems = [
+  const menuItemsAdmin = [
     {
       text: 'Welcome',
       icon: <HomeIcon />,
-      path: '/welcome',
+      path: '/welcome?role=admin',
       badge: null,
     },
     {
-      text: 'Dashboard',
+      text: 'Batches',
       icon: <DashboardIcon />,
-      path: '/dashboard',
+      path: '/dashboard?role=admin',
       badge: state.analytics.activeTraining > 0 ? state.analytics.activeTraining : null,
+    },
+    {
+      text: 'Prompts',
+      icon: <AirlineSeatLegroomNormalOutlined />,
+      path: '/prompts?role=admin',
+      badge: null,
+    },
+    {
+      text: 'Scenario Engines',
+      icon: <AccessTime />,
+      path: '/scenario-engines?role=admin',
+      badge: null,
     },
     {
       text: 'Analytics',
       icon: <AnalyticsIcon />,
-      path: '/analytics',
+      path: '/analytics?role=admin',
+      badge: null,
+    },
+  ];
+
+  const menuItemsTrainee = [
+    {
+      text: 'Welcome',
+      icon: <HomeIcon />,
+      path: '/welcome?role=trainee',
       badge: null,
     },
     {
       text: 'Training Center',
       icon: <SchoolIcon />,
-      path: '/training-center',
+      path: '/training-center?role=trainee',
       badge: 'NEW',
     },
     {
       text: 'Performance',
       icon: <TrendingUpIcon />,
-      path: '/performance',
+      path: '/performance?role=trainee',
       badge: null,
     },
   ];
@@ -139,89 +166,88 @@ function Sidebar({ open, onToggle }) {
         </IconButton>
       </Box>
 
-      {/* Main Menu */}
-      <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
-        <List sx={{ px: 1, py: 2 }}>
-          {menuItems.map((item, index) => (
-            <motion.div
-              key={item.text}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
+        <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+          <List sx={{ px: 1, py: 2 }}>
+            {(role === 'admin' ? menuItemsAdmin : menuItemsTrainee).map((item, index) => (
+          <motion.div
+            key={item.text}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: index * 0.1 }}
+          >
+            <ListItem 
+              disablePadding 
+              sx={{ 
+            mb: 0.5,
+              }}
             >
-              <ListItem 
-                disablePadding 
-                sx={{ 
-                  mb: 0.5,
-                }}
+              <ListItemButton
+            onClick={() => handleItemClick(item.path)}
+            selected={isActiveRoute(item.path)}
+            sx={{
+              borderRadius: 2,
+              mx: 1,
+              '&.Mui-selected': {
+                background: 'linear-gradient(135deg, #003DA5 0%, #002B5C 100%)',
+                color: 'white',
+                '&:hover': {
+              background: 'linear-gradient(135deg, #002B5C 0%, #001B3C 100%)',
+                },
+                '& .MuiListItemIcon-root': {
+              color: '#FFD100',
+                },
+              },
+              '&:hover': {
+                backgroundColor: 'rgba(0, 61, 165, 0.08)',
+              },
+              justifyContent: open ? 'initial' : 'center',
+              px: 2,
+            }}
               >
-                <ListItemButton
-                  onClick={() => handleItemClick(item.path)}
-                  selected={isActiveRoute(item.path)}
-                  sx={{
-                    borderRadius: 2,
-                    mx: 1,
-                    '&.Mui-selected': {
-                      background: 'linear-gradient(135deg, #003DA5 0%, #002B5C 100%)',
-                      color: 'white',
-                      '&:hover': {
-                        background: 'linear-gradient(135deg, #002B5C 0%, #001B3C 100%)',
-                      },
-                      '& .MuiListItemIcon-root': {
-                        color: '#FFD100',
-                      },
-                    },
-                    '&:hover': {
-                      backgroundColor: 'rgba(0, 61, 165, 0.08)',
-                    },
-                    justifyContent: open ? 'initial' : 'center',
-                    px: 2,
-                  }}
-                >
-                  <ListItemIcon
-                    sx={{
-                      minWidth: 0,
-                      mr: open ? 2 : 'auto',
-                      justifyContent: 'center',
-                      color: isActiveRoute(item.path) ? '#FFD100' : '#003DA5',
-                    }}
-                  >
-                    {item.icon}
-                  </ListItemIcon>
-                  
-                  {open && (
-                    <ListItemText 
-                      primary={item.text}
-                      sx={{
-                        '& .MuiTypography-root': {
-                          fontWeight: isActiveRoute(item.path) ? 600 : 500,
-                          fontSize: '0.9rem',
-                        },
-                      }}
-                    />
-                  )}
-                  
-                  {open && item.badge && (
-                    <Chip
-                      label={item.badge}
-                      size="small"
-                      sx={{
-                        height: 20,
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        backgroundColor: typeof item.badge === 'number' ? '#FFD100' : '#28a745',
-                        color: typeof item.badge === 'number' ? '#003DA5' : 'white',
-                      }}
-                    />
-                  )}
-                </ListItemButton>
-              </ListItem>
-            </motion.div>
-          ))}
-        </List>
-      </Box>
+            <ListItemIcon
+              sx={{
+                minWidth: 0,
+                mr: open ? 2 : 'auto',
+                justifyContent: 'center',
+                color: isActiveRoute(item.path) ? '#FFD100' : '#003DA5',
+              }}
+            >
+              {item.icon}
+            </ListItemIcon>
+            
+            {open && (
+              <ListItemText 
+                primary={item.text}
+                sx={{
+              '& .MuiTypography-root': {
+                fontWeight: isActiveRoute(item.path) ? 600 : 500,
+                fontSize: '0.9rem',
+              },
+                }}
+              />
+            )}
+            
+            {open && item.badge && (
+              <Chip
+                label={item.badge}
+                size="small"
+                sx={{
+              height: 20,
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              backgroundColor: typeof item.badge === 'number' ? '#FFD100' : '#28a745',
+              color: typeof item.badge === 'number' ? '#003DA5' : 'white',
+                }}
+              />
+            )}
+              </ListItemButton>
+            </ListItem>
+          </motion.div>
+            ))}
+          </List>
+        </Box>
 
-      {/* Bottom Menu */}
+        {/* Bottom Menu */}
       <Box>
         <Divider sx={{ mx: 2 }} />
         <List sx={{ px: 1, py: 1 }}>

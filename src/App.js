@@ -18,6 +18,9 @@ import { AppProvider } from './context/AppContext';
 
 // Styles
 import './App.css';
+import Prompts from './pages/Prompts';
+import ScenarioEngines from './pages/scenarioEngines';
+import Performance from './pages/Performace';
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -99,6 +102,9 @@ function App() {
               <Route path="/agent/:agentId" element={<AgentProfile />} />
               <Route path="/training/:sessionId" element={<TrainingSession />} />
               <Route path="/analytics" element={<Analytics />} />
+              <Route path="/prompts" element={<Prompts />} />
+              <Route path="/scenario-engines" element={<ScenarioEngines />} />
+              <Route path="/performance" element={<Performance />} />
             </Routes>
           </AnimatePresence>
         </Box>

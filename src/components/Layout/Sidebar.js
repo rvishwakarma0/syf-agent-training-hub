@@ -15,7 +15,6 @@ import {
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
-  People as PeopleIcon,
   Analytics as AnalyticsIcon,
   School as SchoolIcon,
   TrendingUp as TrendingUpIcon,
@@ -23,11 +22,10 @@ import {
   Help as HelpIcon,
   ChevronLeft as ChevronLeftIcon,
   Home as HomeIcon,
-  AirlineSeatLegroomNormalOutlined,
   AccessTime,
+  Assignment as AssignmentIcon,
 } from '@mui/icons-material';
 import { useSearchParams } from 'react-router-dom';
-
 import { motion } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
 
@@ -55,9 +53,9 @@ function Sidebar({ open, onToggle }) {
       badge: state.analytics.activeTraining > 0 ? state.analytics.activeTraining : null,
     },
     {
-      text: 'Prompts',
-      icon: <AirlineSeatLegroomNormalOutlined />,
-      path: '/prompts?role=admin',
+      text: 'Prompt Management',
+      icon: <AssignmentIcon />,
+      path: '/prompts',
       badge: null,
     },
     {
@@ -113,7 +111,10 @@ function Sidebar({ open, onToggle }) {
   };
 
   const isActiveRoute = (path) => {
-    return location.pathname === path;
+    // Remove query parameters for comparison
+    const currentPath = location.pathname;
+    const targetPath = path.split('?')[0];
+    return currentPath === targetPath;
   };
 
   const SidebarContent = () => (
@@ -166,88 +167,87 @@ function Sidebar({ open, onToggle }) {
         </IconButton>
       </Box>
 
-        <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
-          <List sx={{ px: 1, py: 2 }}>
-            {(role === 'admin' ? menuItemsAdmin : menuItemsTrainee).map((item, index) => (
-          <motion.div
-            key={item.text}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3, delay: index * 0.1 }}
-          >
-            <ListItem 
-              disablePadding 
-              sx={{ 
-            mb: 0.5,
-              }}
+      {/* Main Menu */}
+      <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
+        <List sx={{ px: 1, py: 2 }}>
+          {(role === 'admin' ? menuItemsAdmin : menuItemsTrainee).map((item, index) => (
+            <motion.div
+              key={item.text}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.1 }}
             >
-              <ListItemButton
-            onClick={() => handleItemClick(item.path)}
-            selected={isActiveRoute(item.path)}
-            sx={{
-              borderRadius: 2,
-              mx: 1,
-              '&.Mui-selected': {
-                background: 'linear-gradient(135deg, #003DA5 0%, #002B5C 100%)',
-                color: 'white',
-                '&:hover': {
-              background: 'linear-gradient(135deg, #002B5C 0%, #001B3C 100%)',
-                },
-                '& .MuiListItemIcon-root': {
-              color: '#FFD100',
-                },
-              },
-              '&:hover': {
-                backgroundColor: 'rgba(0, 61, 165, 0.08)',
-              },
-              justifyContent: open ? 'initial' : 'center',
-              px: 2,
-            }}
+              <ListItem 
+                disablePadding 
+                sx={{ mb: 0.5 }}
               >
-            <ListItemIcon
-              sx={{
-                minWidth: 0,
-                mr: open ? 2 : 'auto',
-                justifyContent: 'center',
-                color: isActiveRoute(item.path) ? '#FFD100' : '#003DA5',
-              }}
-            >
-              {item.icon}
-            </ListItemIcon>
-            
-            {open && (
-              <ListItemText 
-                primary={item.text}
-                sx={{
-              '& .MuiTypography-root': {
-                fontWeight: isActiveRoute(item.path) ? 600 : 500,
-                fontSize: '0.9rem',
-              },
-                }}
-              />
-            )}
-            
-            {open && item.badge && (
-              <Chip
-                label={item.badge}
-                size="small"
-                sx={{
-              height: 20,
-              fontSize: '0.7rem',
-              fontWeight: 600,
-              backgroundColor: typeof item.badge === 'number' ? '#FFD100' : '#28a745',
-              color: typeof item.badge === 'number' ? '#003DA5' : 'white',
-                }}
-              />
-            )}
-              </ListItemButton>
-            </ListItem>
-          </motion.div>
-            ))}
-          </List>
-        </Box>
+                <ListItemButton 
+                  onClick={() => handleItemClick(item.path)}
+                  selected={isActiveRoute(item.path)}
+                  sx={{
+                    borderRadius: 2,
+                    mx: 1,
+                    '&.Mui-selected': {
+                      background: 'linear-gradient(135deg, #003DA5 0%, #002B5C 100%)',
+                      color: 'white',
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #002B5C 0%, #001B3C 100%)',
+                      },
+                      '& .MuiListItemIcon-root': {
+                        color: '#FFD100',
+                      },
+                    },
+                    '&:hover': {
+                      backgroundColor: 'rgba(0, 61, 165, 0.08)',
+                    },
+                    justifyContent: open ? 'initial' : 'center',
+                    px: 2,
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 0,
+                      mr: open ? 2 : 'auto',
+                      justifyContent: 'center',
+                      color: isActiveRoute(item.path) ? '#FFD100' : '#003DA5',
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  
+                  {open && (
+                    <ListItemText 
+                      primary={item.text}
+                      sx={{
+                        '& .MuiTypography-root': {
+                          fontWeight: isActiveRoute(item.path) ? 600 : 500,
+                          fontSize: '0.9rem',
+                        },
+                      }}
+                    />
+                  )}
+                  
+                  {open && item.badge && (
+                    <Chip
+                      label={item.badge}
+                      size="small"
+                      sx={{
+                        height: 20,
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        backgroundColor: typeof item.badge === 'number' ? '#FFD100' : '#28a745',
+                        color: typeof item.badge === 'number' ? '#003DA5' : 'white',
+                      }}
+                    />
+                  )}
+                </ListItemButton>
+              </ListItem>
+            </motion.div>
+          ))}
+        </List>
+      </Box>
 
-        {/* Bottom Menu */}
+      {/* Bottom Menu */}
       <Box>
         <Divider sx={{ mx: 2 }} />
         <List sx={{ px: 1, py: 1 }}>
@@ -348,7 +348,7 @@ function Sidebar({ open, onToggle }) {
         }}
         open={open}
       >
-        <Box sx={{ mt: 8 }}> {/* Account for header height */}
+        <Box sx={{ mt: 8 }}>
           <SidebarContent />
         </Box>
       </Drawer>
@@ -367,10 +367,10 @@ function Sidebar({ open, onToggle }) {
         open={open}
         onClose={onToggle}
         ModalProps={{
-          keepMounted: true, // Better open performance on mobile
+          keepMounted: true,
         }}
       >
-        <Box sx={{ mt: 8 }}> {/* Account for header height */}
+        <Box sx={{ mt: 8 }}>
           <SidebarContent />
         </Box>
       </Drawer>

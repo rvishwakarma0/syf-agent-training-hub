@@ -204,6 +204,13 @@ const ActionTypes = {
   REMOVE_NOTIFICATION: 'REMOVE_NOTIFICATION',
   UPDATE_SESSION_DATA: 'UPDATE_SESSION_DATA',
   SET_LOADING: 'SET_LOADING',
+
+  SET_PROMPTS: 'SET_PROMPTS',
+  ADD_PROMPT: 'ADD_PROMPT',
+  UPDATE_PROMPT: 'UPDATE_PROMPT',
+  DELETE_PROMPT: 'DELETE_PROMPT',
+  SET_PROMPTS_LOADING: 'SET_PROMPTS_LOADING',
+  SET_PROMPT_SEARCH_RESULTS: 'SET_PROMPT_SEARCH_RESULTS',
 };
 
 // Reducer
@@ -225,12 +232,12 @@ function appReducer(state, action) {
         ...state,
         agents: state.agents.map(agent =>
           agent.id === action.payload.agentId
-            ? { 
-                ...agent, 
-                status: 'training', 
-                currentSession: sessionId,
-                sessionDuration: '0m 0s'
-              }
+            ? {
+              ...agent,
+              status: 'training',
+              currentSession: sessionId,
+              sessionDuration: '0m 0s'
+            }
             : agent
         ),
         sessions: {
@@ -252,12 +259,12 @@ function appReducer(state, action) {
         ...state,
         agents: state.agents.map(agent =>
           agent.id === action.payload.agentId
-            ? { 
-                ...agent, 
-                status: 'available', 
-                currentSession: null,
-                sessionDuration: null
-              }
+            ? {
+              ...agent,
+              status: 'available',
+              currentSession: null,
+              sessionDuration: null
+            }
             : agent
         ),
         sessions: {
@@ -310,6 +317,66 @@ function appReducer(state, action) {
             ...state.sessions[action.payload.sessionId],
             ...action.payload.updates,
           },
+        },
+      };
+
+    case ActionTypes.SET_PROMPTS:
+      return {
+        ...state,
+        prompts: {
+          ...state.prompts,
+          items: action.payload.items,
+          totalCount: action.payload.totalCount || action.payload.items.length,
+          loading: false,
+        },
+      };
+
+    case ActionTypes.ADD_PROMPT:
+      return {
+        ...state,
+        prompts: {
+          ...state.prompts,
+          items: [...state.prompts.items, action.payload],
+          totalCount: state.prompts.totalCount + 1,
+        },
+      };
+
+    case ActionTypes.UPDATE_PROMPT:
+      return {
+        ...state,
+        prompts: {
+          ...state.prompts,
+          items: state.prompts.items.map(prompt =>
+            prompt.id === action.payload.id ? action.payload : prompt
+          ),
+        },
+      };
+
+    case ActionTypes.DELETE_PROMPT:
+      return {
+        ...state,
+        prompts: {
+          ...state.prompts,
+          items: state.prompts.items.filter(prompt => prompt.id !== action.payload.id),
+          totalCount: Math.max(0, state.prompts.totalCount - 1),
+        },
+      };
+
+    case ActionTypes.SET_PROMPTS_LOADING:
+      return {
+        ...state,
+        prompts: {
+          ...state.prompts,
+          loading: action.payload,
+        },
+      };
+
+    case ActionTypes.SET_PROMPT_SEARCH_RESULTS:
+      return {
+        ...state,
+        prompts: {
+          ...state.prompts,
+          searchResults: action.payload,
         },
       };
 
@@ -374,6 +441,30 @@ export function AppProvider({ children }) {
         type: ActionTypes.UPDATE_SESSION_DATA,
         payload: { sessionId, updates },
       });
+    },
+
+    setPrompts: (items, totalCount) => {
+      dispatch({ type: ActionTypes.SET_PROMPTS, payload: { items, totalCount } });
+    },
+
+    addPrompt: (prompt) => {
+      dispatch({ type: ActionTypes.ADD_PROMPT, payload: prompt });
+    },
+
+    updatePrompt: (prompt) => {
+      dispatch({ type: ActionTypes.UPDATE_PROMPT, payload: prompt });
+    },
+
+    deletePrompt: (promptId) => {
+      dispatch({ type: ActionTypes.DELETE_PROMPT, payload: { id: promptId } });
+    },
+
+    setPromptsLoading: (loading) => {
+      dispatch({ type: ActionTypes.SET_PROMPTS_LOADING, payload: loading });
+    },
+
+    setPromptSearchResults: (results) => {
+      dispatch({ type: ActionTypes.SET_PROMPT_SEARCH_RESULTS, payload: results });
     },
   };
 

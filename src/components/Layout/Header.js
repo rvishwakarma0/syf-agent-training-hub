@@ -19,16 +19,18 @@ import { motion } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
 
 function Header({ onSidebarToggle }) {
-  const { state } = useApp();
+  const { state, actions } = useApp();
 
   const handleNotificationClick = () => {
-    // Handle notification click
     console.log('Notifications clicked');
   };
 
   const handleProfileClick = () => {
-    // Handle profile click
     console.log('Profile clicked');
+  };
+
+  const handleLogout = () => {
+    actions.logout();
   };
 
   return (
@@ -59,15 +61,15 @@ function Header({ onSidebarToggle }) {
             animate={{ scale: 1 }}
             transition={{ duration: 0.5 }}
           >
-            <SchoolIcon 
-              sx={{ 
-                fontSize: 32, 
-                color: '#FFD100', 
-                mr: 2 
-              }} 
+            <SchoolIcon
+              sx={{
+                fontSize: 32,
+                color: '#FFD100',
+                mr: 2,
+              }}
             />
           </motion.div>
-          
+
           <Box>
             <Typography
               variant="h5"
@@ -95,7 +97,14 @@ function Header({ onSidebarToggle }) {
         </Box>
 
         {/* Status Indicators */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mr: 2 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            mr: 2,
+          }}
+        >
           <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 3 }}>
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="h6" sx={{ color: '#FFD100', fontWeight: 600 }}>
@@ -105,7 +114,7 @@ function Header({ onSidebarToggle }) {
                 Training
               </Typography>
             </Box>
-            
+
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="h6" sx={{ color: '#FFD100', fontWeight: 600 }}>
                 {state.analytics.totalAgents}
@@ -114,7 +123,7 @@ function Header({ onSidebarToggle }) {
                 Total Agents
               </Typography>
             </Box>
-            
+
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="h6" sx={{ color: '#FFD100', fontWeight: 600 }}>
                 {state.analytics.averageEmpathyScore.toFixed(1)}%
@@ -127,13 +136,9 @@ function Header({ onSidebarToggle }) {
         </Box>
 
         {/* Notifications */}
-        <IconButton
-          color="inherit"
-          onClick={handleNotificationClick}
-          sx={{ mr: 1 }}
-        >
-          <Badge 
-            badgeContent={state.notifications.length} 
+        <IconButton color="inherit" onClick={handleNotificationClick} sx={{ mr: 1 }}>
+          <Badge
+            badgeContent={state.notifications.length}
             color="secondary"
             sx={{
               '& .MuiBadge-badge': {
@@ -169,6 +174,17 @@ function Header({ onSidebarToggle }) {
             </Typography>
           </Box>
         </Button>
+
+        {/* Logout Button */}
+        {state.user.authenticated && (
+          <Button
+            color="inherit"
+            onClick={handleLogout}
+            sx={{ ml: 2, textTransform: 'none' }}
+          >
+            Logout
+          </Button>
+        )}
       </Toolbar>
     </AppBar>
   );

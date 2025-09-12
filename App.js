@@ -92,7 +92,7 @@ function App() {
               flexGrow: 1,
               p: 0,
               marginTop: '64px',
-              marginLeft: sidebarOpen ? '280px' : '80px',
+              marginLeft: sidebarOpen ? '60px' : '80px',
               transition: 'margin 0.3s ease',
               '@media (max-width: 900px)': {
                 marginLeft: 0,

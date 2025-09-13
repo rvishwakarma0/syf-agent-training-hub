@@ -1,5 +1,7 @@
+// context/UserContext.js - ENHANCED VERSION
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ROLES } from '../util/roles';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { getUserBySsoId } from '../util/users-data';
 
 const UserContext = createContext();
 
@@ -12,65 +14,82 @@ export const useUser = () => {
 };
 
 export const UserProvider = ({ children }) => {
-  const [user, setUser] = useState({
-    id: null,
-    name: '',
-    email: '',
-    role: null,
-    isAuthenticated: false,
-  });
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // Initialize user from localStorage or URL params
+  // Initialize user from localStorage (NO URL params)
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const roleFromUrl = urlParams.get('role');
-    
-    // Check localStorage first
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      setUser(parsedUser);
-    } else if (roleFromUrl && (roleFromUrl === 'admin' || roleFromUrl === 'trainee')) {
-      // Set user based on URL parameter (for demo purposes)
-      const demoUser = {
-        id: 1,
-        name: roleFromUrl === 'admin' ? 'Admin User' : 'Trainee User',
-        email: `${roleFromUrl}@synchrony.com`,
-        role: roleFromUrl,
-        isAuthenticated: true,
-      };
-      setUser(demoUser);
-      localStorage.setItem('user', JSON.stringify(demoUser));
-    }
+    const initializeAuth = () => {
+      try {
+        const savedUser = localStorage.getItem('user');
+        if (savedUser) {
+          const userData = JSON.parse(savedUser);
+          // Map trainer -> admin for role consistency
+          if (userData.role === 'trainer') {
+            userData.role = 'admin';
+          }
+          setUser({
+            ...userData,
+            isAuthenticated: true
+          });
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        localStorage.clear();
+      }
+      setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   const login = (userData) => {
-    const authenticatedUser = {
-      ...userData,
-      isAuthenticated: true,
-    };
-    setUser(authenticatedUser);
-    localStorage.setItem('user', JSON.stringify(authenticatedUser));
+    try {
+      // Map trainer -> admin for consistent role-based access
+      const role = userData.role === 'trainer' ? 'admin' : userData.role;
+      
+      const authenticatedUser = {
+        id: userData['sso-id'] || userData.id,
+        name: userData.name,
+        email: userData.email || `${userData.name.toLowerCase().replace(' ', '.')}@synchrony.com`,
+        role: role,
+        isAuthenticated: true
+      };
+      
+      setUser(authenticatedUser);
+      localStorage.setItem('user', JSON.stringify(authenticatedUser));
+      
+      // ✅ Navigate based on role - this was missing!
+      if (role === 'admin') {
+        navigate('/welcome', { replace: true });
+      } else {
+        navigate('/profile', { replace: true }); // Trainees go to chat
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Login error:', error);
+      return { success: false, error: 'Login failed' };
+    }
   };
 
   const logout = () => {
-    const loggedOutUser = {
-      id: null,
-      name: '',
-      email: '',
-      role: null,
-      isAuthenticated: false,
-    };
-    setUser(loggedOutUser);
-    localStorage.removeItem('user');
+    setUser(null);
+    // Clear ALL storage
+    localStorage.clear();
+    sessionStorage.clear();
+    // Navigate to login
+    navigate('/login', { replace: true });
   };
 
   const hasRole = (requiredRole) => {
-    return user.role === requiredRole;
+    return user?.role === requiredRole;
   };
 
   const hasAnyRole = (requiredRoles) => {
-    return requiredRoles.includes(user.role);
+    return requiredRoles.includes(user?.role);
   };
 
   const value = {
@@ -79,7 +98,8 @@ export const UserProvider = ({ children }) => {
     logout,
     hasRole,
     hasAnyRole,
-    isAuthenticated: user.isAuthenticated,
+    isAuthenticated: !!user?.isAuthenticated,
+    loading
   };
 
   return (

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Grid, 
-  Card, 
-  CardContent, 
-  Typography, 
-  Button, 
+import {
+  Box,
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Button,
   Chip,
   Container,
   Alert
@@ -59,52 +59,37 @@ const TrainingCenter = () => {
   const [apiStatus, setApiStatus] = useState(null);
 
   const categories = ['All', 'Customer Support', 'Sales', 'Banking'];
-  
-  const filteredScenarios = selectedCategory === 'All' 
-    ? scenarios 
+
+  const filteredScenarios = selectedCategory === 'All'
+    ? scenarios
     : scenarios.filter(scenario => scenario.category === selectedCategory);
 
-  // Test API connectivity on component mount
+  // Update the useEffect in TrainingCenter.js
   useEffect(() => {
     const testApi = async () => {
-      console.log('🧪 Testing AWS Lambda API connectivity...');
-      
+      console.log('🧪 Testing Spring Boot API connectivity...');
       try {
-        // Test your actual deployed start-scenario endpoint
-        const response = await fetch('https://cld1z37z1e.execute-api.us-east-1.amazonaws.com/demo/start-scenario', {
-          method: 'POST',
-          mode: 'cors',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            scenarioType: "customer_complaint",
-            emotion: "frustrated", 
-            difficultyLevel: "medium"
-          })
-        });
+        const response = await apiService.healthCheck();
 
-        console.log('✅ API Test Response Status:', response.status);
-        const data = await response.text();
-        console.log('📋 API Test Response Data:', data);
-        
-        setApiStatus({ 
-          success: response.ok, 
-          status: response.status,
-          message: response.ok ? 'AWS APIs working!' : 'API responding but may have CORS issue'
+        setApiStatus({
+          success: response.success,
+          message: response.success ?
+            '✅ Spring Boot API is working!' :
+            '⚠️ Spring Boot API connection issue'
         });
       } catch (error) {
-        console.log('❌ API Test Error:', error.message);
-        setApiStatus({ 
-          success: false, 
+        console.log('❌ Spring Boot API Test Error:', error.message);
+        setApiStatus({
+          success: false,
           error: error.message,
-          message: 'CORS issue detected - using fallback responses'
+          message: 'Spring Boot API not accessible - using fallback responses'
         });
       }
     };
-    
+
     testApi();
   }, []);
+
 
   const handleStartTraining = (scenarioId) => {
     // Navigate to training session with the scenario ID
@@ -135,15 +120,15 @@ const TrainingCenter = () => {
           <Typography variant="subtitle1" color="text.secondary" sx={{ fontSize: '1rem' }}>
             Choose a scenario to start your empathy training
           </Typography>
-          
+
           {/* API Status Alert */}
           {apiStatus && (
-            <Alert 
-              severity={apiStatus.success ? 'success' : 'warning'} 
+            <Alert
+              severity={apiStatus.success ? 'success' : 'warning'}
               sx={{ mt: 2, mb: 2 }}
             >
-              {apiStatus.success 
-                ? `✅ AWS Lambda APIs are accessible! (Status: ${apiStatus.status}) - ${apiStatus.message}` 
+              {apiStatus.success
+                ? `✅ AWS Lambda APIs are accessible! (Status: ${apiStatus.status}) - ${apiStatus.message}`
                 : `⚠️ ${apiStatus.message || apiStatus.error}. Demo will use intelligent fallback responses.`
               }
             </Alert>
@@ -178,8 +163,8 @@ const TrainingCenter = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
               >
-                <Card 
-                  sx={{ 
+                <Card
+                  sx={{
                     height: '100%',
                     display: 'flex',
                     flexDirection: 'column',
@@ -191,27 +176,27 @@ const TrainingCenter = () => {
                   }}
                 >
                   {/* Colored Header Bar */}
-                  <Box 
-                    sx={{ 
-                      height: 4, 
+                  <Box
+                    sx={{
+                      height: 4,
                       backgroundColor: scenario.color,
                       borderRadius: '4px 4px 0 0'
-                    }} 
+                    }}
                   />
-                  
+
                   <CardContent sx={{ flexGrow: 1, p: 3 }}>
                     {/* Category Badge */}
-                    <Chip 
+                    <Chip
                       label={scenario.category}
                       size="small"
-                      sx={{ 
+                      sx={{
                         mb: 2,
                         backgroundColor: `${scenario.color}20`,
                         color: scenario.color,
                         border: `1px solid ${scenario.color}40`
                       }}
                     />
-                    
+
                     {/* Title & Description */}
                     <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
                       {scenario.title}
@@ -219,25 +204,25 @@ const TrainingCenter = () => {
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                       {scenario.description}
                     </Typography>
-                    
+
                     {/* Difficulty & Duration */}
                     <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
-                      <Chip 
+                      <Chip
                         label={scenario.difficulty}
                         size="small"
-                        sx={{ 
+                        sx={{
                           backgroundColor: getDifficultyColor(scenario.difficulty),
                           color: 'white',
                           fontWeight: 'bold'
                         }}
                       />
-                      <Chip 
+                      <Chip
                         label={scenario.duration}
                         size="small"
                         variant="outlined"
                       />
                     </Box>
-                    
+
                     {/* Start Button */}
                     <Button
                       variant="contained"

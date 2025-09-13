@@ -76,7 +76,7 @@ function App() {
         <motion.div
           initial={{ scale: 0.5, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 0.5 }}
         >
           <Typography variant="h4" component="h1" textAlign="center">
             Loading Synchrony Agent Training Hub...
@@ -107,10 +107,7 @@ function App() {
             }}
           >
             <Routes>
-              {/* Public Routes */}
               <Route path="/login" element={<Login />} />
-
-              {/* Protected Routes - Everyone */}
               <Route
                 path="/welcome"
                 element={

@@ -1,23 +1,20 @@
 import React, { useState } from 'react';
 import { Container, Box, Typography, TextField, Button, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { getUserBySsoId } from '../util/users-data';
 
 function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [ssoid, setSsoid] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
-    // Simple demo authentication
-    if (email === 'admin@synchrony.com' && password === 'admin') {
-      navigate('/welcome?role=admin');
-    } else if (email === 'trainee@synchrony.com' && password === 'trainee') {
-      navigate('/welcome?role=trainee');
-    } else {
-      setError('Invalid credentials. Try admin@synchrony.com/admin or trainee@synchrony.com/trainee');
+    if(getUserBySsoId(ssoid) !== null){
+      localStorage.setItem('user', JSON.stringify(getUserBySsoId(ssoid)));
+      navigate('/welcome');
+    }else {
+      setError('Invalid credentials. Try any other SSO Id from 2345678901 for trainee or 1234567890 for trainer');
     }
   };
 
@@ -39,22 +36,11 @@ function Login() {
           margin="normal"
           required
           fullWidth
-          label="Email Address"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="email"
+          label="SSO Id"
+          value={ssoid}
+          onChange={(e) => setSsoid(e.target.value)}
+          autoComplete="ssoid"
           autoFocus
-        />
-        
-        <TextField
-          margin="normal"
-          required
-          fullWidth
-          label="Password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
         />
         
         <Button
@@ -69,12 +55,6 @@ function Login() {
         >
           Sign In
         </Button>
-
-        <Alert severity="info">
-          <strong>Demo Credentials:</strong><br />
-          Admin: admin@synchrony.com / admin<br />
-          Trainee: trainee@synchrony.com / trainee
-        </Alert>
       </Box>
     </Container>
   );

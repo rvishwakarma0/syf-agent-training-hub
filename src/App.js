@@ -33,6 +33,13 @@ import TpOdView from './components/Tpod/TpOdView';
 import { AppProvider } from './context/AppContext';
 import { UserProvider } from './context/UserContext';
 
+
+import VoiceInputDemo from './components/VoiceInput/VoiceInputDemo';
+
+import VoiceChat from './components/VoiceChat/VoiceChat';
+
+import NovaSonicVoiceChat from './components/VoiceChat/NovaSonicVoiceChat';
+
 // Utils
 import { ROLES } from '../src/util/roles';
 
@@ -237,6 +244,13 @@ function App() {
               <Route path="/tpods/create" element={<TpOdForm />} />
               <Route path="/tpods/:id" element={<TpOdView />} />
               <Route path="/tpods/:id/edit" element={<TpOdForm />} />
+
+              <Route path="/voice-demo" element={<VoiceInputDemo />} />
+
+              <Route path="/voice-chat" element={<VoiceChat />} />
+
+              <Route path="/nova-sonic-chat" element={<NovaSonicVoiceChat />} />
+
 
 
               {/* Default Redirects */}

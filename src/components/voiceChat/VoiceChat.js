@@ -1,10 +1,40 @@
+
+import { Button } from '@mui/material'
 import React from 'react'
 
 export default function VoiceChat() {
+
+  let chatHistory = "";
+
+  window.addEventListener('message', (event) => {
+    if (event.data?.type === 'chatHistory') {
+      chatHistory = event.data.data;
+    }
+  });
+
+  const evaluateChatHistory = () => {
+    console.log('chatHistory', chatHistory)
+  }
+  
   return (
-    <div style={{ height: '91vh', width: '100%' }}>
+    <>
+    <Button
+  onClick={() => evaluateChatHistory()}
+  style={{
+    float: 'right',
+    backgroundColor: '#4CAF50', // green
+    color: 'white',             // text color
+    border: 'none',
+    margin: '8px 16px',
+    borderRadius: '4px',
+    cursor: 'pointer'
+  }}
+>
+  Evaluate
+</Button>
+    <div style={{ height: '80vh', width: '100%' }}>
       <iframe
-        src="http://localhost:5173/"
+        src="http://localhost:5173?data=abc"
         title="Voice Chat App"
         width="100%"
         height="100%"
@@ -12,5 +42,6 @@ export default function VoiceChat() {
         allow="microphone; autoplay"
       />
     </div>
+    </>
   )
 }

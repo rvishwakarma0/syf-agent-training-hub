@@ -114,7 +114,10 @@ function TpOdList() {
 
   const filteredTpods = tpods.filter(tpod =>
     tpod.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (tpod.summary && tpod.summary.toLowerCase().includes(searchTerm.toLowerCase()))
+    (tpod.summary && tpod.summary.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (tpod.difficulty && tpod.difficulty.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (tpod.personaPrompt && tpod.personaPrompt.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (tpod.evaluatorPrompt && tpod.evaluatorPrompt.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const formatDate = (dateString) => {
@@ -357,6 +360,24 @@ function TpOdList() {
                         sx={{ mb: 2, flexGrow: 1 }}
                       >
                         <strong>First Message:</strong> {truncateText(tpod.firstMessage, 100)}
+                      </Typography>
+
+                      {/* persona Prompt Preview */}
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary" 
+                        sx={{ mb: 2, flexGrow: 1 }}
+                      >
+                        <strong>Persona Prompt:</strong> {truncateText(tpod.personaPrompt, 100)}
+                      </Typography>
+
+                      {/* Evaluator Prompt Preview */}
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary" 
+                        sx={{ mb: 2, flexGrow: 1 }}
+                      >
+                        <strong>Evaluator Prompt:</strong> {truncateText(tpod.evaluatorPrompt, 100)}
                       </Typography>
 
                       {/* Actions */}

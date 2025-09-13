@@ -60,9 +60,9 @@ function Sidebar({ open, onToggle }) {
       badge: null,
     },
     {
-      text: 'Scenario Engines',
+      text: 'Training Pods',
       icon: <AccessTime />,
-      path: '/scenario-engines?role=admin',
+      path: '/tpods?role=admin',
       badge: null,
     },
     {

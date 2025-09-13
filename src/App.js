@@ -167,15 +167,6 @@ function App() {
               />
 
               <Route
-                path="/scenario-engines"
-                element={
-                  <ProtectedRoute requiredRoles={[ROLES.ADMIN]}>
-                    <div>Scenario Engines Page - Admin Only</div>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
                 path="/analytics"
                 element={
                   <ProtectedRoute requiredRoles={[ROLES.ADMIN]}>

@@ -25,6 +25,7 @@ import {
   AccessTime,
   Assignment as AssignmentIcon,
   KeyboardVoice,
+  Mic as MicIcon,
 } from '@mui/icons-material';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -70,6 +71,30 @@ function Sidebar({ open, onToggle }) {
       icon: <AnalyticsIcon />,
       path: '/analytics?role=admin',
       badge: null,
+    },
+    {
+      text: 'Voice Input Demo',
+      icon: <MicIcon />,
+      path: '/voice-demo',
+      badge: 'NEW',
+    },
+    {
+      text: 'Voice Chat',
+      icon: <MicIcon />,
+      path: '/voice-chat',
+      badge: 'NEW',
+    },
+    {
+      text: 'Voice Chat',
+      icon: <MicIcon />,
+      path: '/voice-chat',
+      badge: 'BETA',
+    },
+    {
+      text: 'Nova Sonic Chat',
+      icon: <MicIcon />,
+      path: '/nova-sonic-chat',
+      badge: 'AI',
     },
   ];
 
@@ -155,21 +180,21 @@ function Sidebar({ open, onToggle }) {
             </Typography>
           </motion.div>
         )}
-        
-        <IconButton 
+
+        <IconButton
           onClick={onToggle}
-          sx={{ 
+          sx={{
             color: '#003DA5',
             '&:hover': {
               backgroundColor: 'rgba(0, 61, 165, 0.1)',
             },
           }}
         >
-          <ChevronLeftIcon 
-            sx={{ 
+          <ChevronLeftIcon
+            sx={{
               transform: open ? 'rotate(0deg)' : 'rotate(180deg)',
               transition: 'transform 0.3s ease',
-            }} 
+            }}
           />
         </IconButton>
       </Box>
@@ -184,11 +209,11 @@ function Sidebar({ open, onToggle }) {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: index * 0.1 }}
             >
-              <ListItem 
-                disablePadding 
+              <ListItem
+                disablePadding
                 sx={{ mb: 0.5 }}
               >
-                <ListItemButton 
+                <ListItemButton
                   onClick={() => handleItemClick(item.path)}
                   selected={isActiveRoute(item.path)}
                   sx={{
@@ -221,9 +246,9 @@ function Sidebar({ open, onToggle }) {
                   >
                     {item.icon}
                   </ListItemIcon>
-                  
+
                   {open && (
-                    <ListItemText 
+                    <ListItemText
                       primary={item.text}
                       sx={{
                         '& .MuiTypography-root': {
@@ -233,7 +258,7 @@ function Sidebar({ open, onToggle }) {
                       }}
                     />
                   )}
-                  
+
                   {open && item.badge && (
                     <Chip
                       label={item.badge}
@@ -288,7 +313,7 @@ function Sidebar({ open, onToggle }) {
                   {item.icon}
                 </ListItemIcon>
                 {open && (
-                  <ListItemText 
+                  <ListItemText
                     primary={item.text}
                     sx={{
                       '& .MuiTypography-root': {

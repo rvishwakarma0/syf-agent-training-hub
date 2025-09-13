@@ -19,6 +19,7 @@ import {
   Assignment as PromptIcon,
   School as TpodIcon,
   Person as ProfileIcon,
+  VoiceChat,
 } from '@mui/icons-material';
 import { School as SchoolIcon, TrendingUp as TrendingUpIcon } from '@mui/icons-material';
 
@@ -43,7 +44,7 @@ const menuConfig = {
     { path: '/chat', label: 'Synchrony Chat', icon: ChatIcon }, // ✅ Updated
     { path: '/profile', label: 'Profile', icon: ProfileIcon },
     { path: '/training-center', label: 'Training Center', icon: SchoolIcon },
-    { path: '/performance', label: 'Performance', icon: TrendingUpIcon }
+    { path: '/performance', label: 'Performance', icon: TrendingUpIcon },
   ],
   user: [
     { path: '/chat', label: 'Synchrony Chat', icon: ChatIcon }, // ✅ Updated

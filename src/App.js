@@ -151,6 +151,14 @@ function App() {
             </ProtectedRoute>
           } />
 
+          <Route path="/voice-chat" element={
+            <ProtectedRoute requiredRoles={[ ROLES.TRAINEE, ROLES.USER]}>
+              <AppLayout>
+                <VoiceChat />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+
           <Route path="/prompts/create" element={
             <ProtectedRoute requiredRoles={[ROLES.ADMIN]}>
               <AppLayout>
@@ -208,7 +216,7 @@ function App() {
           } />
 
 
-              <Route path="/voice-chat" element={<VoiceChat />} />
+              {/* <Route path="/voice-chat" element={<VoiceChat />} /> */}
               {/* Default Redirects */}
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="*" element={<Navigate to="/login" replace />} />

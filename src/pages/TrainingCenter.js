@@ -10,6 +10,12 @@ import {
   Container,
   Alert
 } from '@mui/material';
+
+import {
+  Chat as ChatIcon,
+  Mic as MicIcon,
+} from '@mui/icons-material';
+
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../services/apiService';
@@ -95,6 +101,19 @@ const TrainingCenter = () => {
     // Navigate to training session with the scenario ID
     navigate(`/training/${scenarioId}`);
   };
+
+  // Add this function alongside your existing handleStartTraining function
+  const handleStartVoiceChat = (scenarioId) => {
+    // Navigate to voice training session
+    navigate(`/voice-chat/${scenarioId}`);
+  };
+
+  // Update existing function name for clarity (optional)
+  // const handleStartTraining = (scenarioId) => {
+  //   // Navigate to text chat training session
+  //   navigate(`/training/${scenarioId}`);
+  // };
+
 
   const getDifficultyColor = (difficulty) => {
     switch (difficulty) {
@@ -223,23 +242,49 @@ const TrainingCenter = () => {
                       />
                     </Box>
 
-                    {/* Start Button */}
-                    <Button
-                      variant="contained"
-                      fullWidth
-                      onClick={() => handleStartTraining(scenario.id)}
-                      sx={{
-                        backgroundColor: scenario.color,
-                        '&:hover': {
+                    {/* Action Buttons - Chat & Voice */}
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      {/* Chat Button */}
+                      <Button
+                        variant="contained"
+                        onClick={() => handleStartTraining(scenario.id)}
+                        sx={{
+                          flex: 1,
                           backgroundColor: scenario.color,
-                          filter: 'brightness(0.9)'
-                        },
-                        py: 1.5,
-                        fontWeight: 'bold'
-                      }}
-                    >
-                      Start Training
-                    </Button>
+                          '&:hover': {
+                            backgroundColor: scenario.color,
+                            filter: 'brightness(0.9)'
+                          },
+                          py: 1.5,
+                          fontWeight: 'bold',
+                          borderRadius: '8px'
+                        }}
+                      >
+                        Chat
+                      </Button>
+
+                      {/* Voice Button */}
+                      <Button
+                        variant="outlined"
+                        onClick={() => handleStartVoiceChat(scenario.id)}
+                        sx={{
+                          flex: 1,
+                          borderColor: scenario.color,
+                          color: scenario.color,
+                          '&:hover': {
+                            borderColor: scenario.color,
+                            backgroundColor: `${scenario.color}10`,
+                            color: scenario.color
+                          },
+                          py: 1.5,
+                          fontWeight: 'bold',
+                          borderRadius: '8px'
+                        }}
+                      >
+                        Voice
+                      </Button>
+                    </Box>
+
                   </CardContent>
                 </Card>
               </motion.div>

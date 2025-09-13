@@ -3,10 +3,6 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Box } from '@mui/material';
 
-// Context Providers
-import { UserProvider } from './context/UserContext';
-import { AppProvider } from './context/AppContext';
-
 // Layout Components
 import Header from './components/Layout/Header';
 import Sidebar from './components/Layout/Sidebar';
@@ -21,7 +17,6 @@ import Chat from './pages/Chat';
 import Profile from './pages/Profile';
 import TrainingCenter from './pages/TrainingCenter';
 import Analytics from './pages/Analytics';
-import TrainingSession from './pages/TrainingSession';
 import Welcome from './pages/Welcome';
 
 // Admin Components
@@ -218,8 +213,6 @@ function App() {
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
-          </Box>
-        </Box>
       </AppProvider>
     </UserProvider>
   );

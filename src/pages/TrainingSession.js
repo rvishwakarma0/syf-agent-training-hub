@@ -1,4 +1,4 @@
-// src/pages/TrainingSession.js - Complete Code with Fixed Voice Input
+// src/pages/TrainingSession.js - Complete Code with Integrated Feedback Icons
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Tooltip,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -25,17 +26,21 @@ import {
   Mic as MicIcon,
   MicOff as MicOffIcon,
   Person as PersonIcon,
+  Help as HelpIcon,
+  Feedback as FeedbackIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import VoiceInput from '../components/VoiceInput/VoiceInput';
+import ReactMarkdown from 'react-markdown';
 
 // Updated apiService for Spring Boot integration
 const apiService = {
   // Start Pod Session
   async startPod(scenarioData) {
     const API_BASE_URL = 'http://localhost:8080/api';
-
+    
     try {
       const tpodMapping = {
         'customer-service': 'customer-support-tpod',
@@ -89,7 +94,7 @@ const apiService = {
   // Send Message
   async sendMessage(messageData) {
     const API_BASE_URL = 'http://localhost:8080/api';
-
+    
     try {
       const payload = {
         sessionId: messageData.sessionId,
@@ -156,6 +161,13 @@ function TrainingSession() {
   const [useVoiceInput, setUseVoiceInput] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
 
+  // Feedback states
+  const [isGettingFeedback, setIsGettingFeedback] = useState(false);
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+  const [feedbackContent, setFeedbackContent] = useState('');
+  const [feedbackType, setFeedbackType] = useState('help');
+  const [feedbackError, setFeedbackError] = useState(null);
+
   // Scenario definitions
   const scenarios = {
     'customer-service': {
@@ -189,10 +201,10 @@ function TrainingSession() {
     const initializeSession = async () => {
       setIsLoading(true);
       setConnectionStatus('connecting');
-
+      
       try {
         console.log('🚀 Initializing Spring Boot session for:', sessionId);
-
+        
         const response = await apiService.startPod({
           scenario: sessionId,
         });
@@ -205,12 +217,12 @@ function TrainingSession() {
             timestamp: new Date(),
             emotion: 'neutral',
           };
-
+          
           setMessages([initialMessage]);
           setCurrentSessionId(response.data.sessionId);
           setCurrentTpodId(response.data.tpodId);
           setConnectionStatus('connected');
-
+          
           console.log('✅ Session initialized:', response.data.sessionId);
         } else {
           throw new Error('Failed to start pod session');
@@ -218,7 +230,7 @@ function TrainingSession() {
       } catch (error) {
         console.error('❌ Failed to initialize session:', error);
         setConnectionStatus('error');
-
+        
         // Fallback message
         const fallbackMessage = {
           id: 1,
@@ -260,10 +272,9 @@ function TrainingSession() {
 
   // Handle voice message - populate text field without auto-sending
   const handleVoiceMessage = (transcript) => {
-    // ✅ Ensure transcript is always a string
     const safeTranscript = String(transcript || '').trim();
     console.log('🎤 Voice transcript:', safeTranscript, 'Type:', typeof safeTranscript);
-
+    
     if (safeTranscript) {
       setCurrentMessage(safeTranscript);
     }
@@ -274,31 +285,27 @@ function TrainingSession() {
     const safeTranscript = String(transcript || '').trim();
     if (safeTranscript && !isLoading) {
       console.log('🎤 Direct voice send:', safeTranscript);
-      // Send directly without setting currentMessage
       handleSendMessage(safeTranscript);
     }
   };
 
-
   // Send message to Spring Boot API
   const handleSendMessage = async (messageOverride = null) => {
-    // ✅ Ensure messageToSend is always a string
     const messageToSend = messageOverride || currentMessage || '';
     const trimmedMessage = String(messageToSend).trim();
-
+    
     if (!trimmedMessage || isLoading) return;
 
     setIsLoading(true);
     setIsTyping(true);
 
-    // ✅ FIXED: Ensure text is always a string
     const userMessage = {
       id: Date.now(),
       sender: 'agent',
-      text: String(trimmedMessage), // ✅ Force string conversion
+      text: String(trimmedMessage),
       timestamp: new Date(),
     };
-
+    
     console.log('✅ User message created:', userMessage);
     setMessages(prev => [...prev, userMessage]);
     setCurrentMessage('');
@@ -315,13 +322,32 @@ function TrainingSession() {
           const aiMessage = {
             id: Date.now() + 1,
             sender: 'customer',
-            // ✅ FIXED: Ensure AI response is always a string
             text: String(response.data.aiResponse || 'Thank you for your response.'),
             timestamp: new Date(),
             emotion: 'neutral',
           };
-
+          
           console.log('✅ AI message created:', aiMessage);
+          setMessages(prev => [...prev, aiMessage]);
+          setIsTyping(false);
+        }, 1000);
+      } else {
+        // Fallback response
+        const fallbackResponses = [
+          "Thank you for your response. I appreciate your help.",
+          "I understand. Can you tell me more about that?",
+          "That makes sense. What would you recommend?",
+          "I see. Is there anything else I should know?",
+        ];
+
+        setTimeout(() => {
+          const aiMessage = {
+            id: Date.now() + 1,
+            sender: 'customer',
+            text: fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)],
+            timestamp: new Date(),
+            emotion: 'neutral',
+          };
           setMessages(prev => [...prev, aiMessage]);
           setIsTyping(false);
         }, 1000);
@@ -334,12 +360,213 @@ function TrainingSession() {
     }
   };
 
-  // End session
+  // Get feedback function
+  const getFeedback = async (type = 'help') => {
+    setIsGettingFeedback(true);
+    setFeedbackError(null);
+    setFeedbackType(type);
+
+    try {
+      const API_BASE_URL = 'http://localhost:8080/api';
+      
+      // Format messages to match your backend structure
+      const formattedMessages = messages.map(msg => ({
+        role: msg.sender === 'agent' ? 'trainee' : 'customer',
+        message: typeof msg.text === 'string' ? msg.text : JSON.stringify(msg.text),
+        timestamp: Math.floor(msg.timestamp?.getTime() / 1000).toString() || Math.floor(Date.now() / 1000).toString()
+      }));
+
+      // Match your exact payload structure
+      const payload = {
+        messages: formattedMessages,
+        tpodId: currentTpodId,
+        userId: "RAJ02",
+        sessionId: currentSessionId
+      };
+
+      console.log('📊 Requesting feedback with payload:', payload);
+
+      const response = await fetch(`${API_BASE_URL}/chat/get-feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Feedback response received:', data);
+      
+      // Extract message field from your response structure
+      const markdownContent = data.message || data.feedback || data || 'No feedback available';
+
+      setFeedbackContent(markdownContent);
+      setFeedbackDialogOpen(true);
+
+    } catch (err) {
+      console.error('❌ Feedback request failed:', err);
+      setFeedbackError(err.message);
+      
+      // Fallback content
+      const fallbackContent = type === 'evaluation' 
+        ? generateFallbackEvaluation()
+        : generateFallbackHelp();
+      
+      setFeedbackContent(fallbackContent);
+      setFeedbackDialogOpen(true);
+    } finally {
+      setIsGettingFeedback(false);
+    }
+  };
+
+  // Fallback content generators
+  const generateFallbackHelp = () => {
+    return `
+# 💡 Training Tips & Help
+
+## Current Status
+- **Messages Exchanged**: ${messages.filter(m => m.sender === 'agent').length}
+- **Session Duration**: ${formatDuration(sessionDuration)}
+
+## 🎯 Key Tips for Success
+1. **Show Empathy**: Use phrases like "I understand" and "I can see why you'd feel that way"
+2. **Active Listening**: Acknowledge the customer's concerns before offering solutions
+3. **Stay Professional**: Maintain a helpful and respectful tone throughout
+4. **Ask Questions**: Use open-ended questions to better understand the situation
+
+## 🗣️ Good Example Phrases
+- "I apologize for the inconvenience you've experienced"
+- "Let me help you resolve this issue"
+- "I want to make sure I understand correctly..."
+- "Thank you for bringing this to my attention"
+
+## Need More Help?
+Continue the conversation and click the help button again for updated guidance!
+    `;
+  };
+
+  const generateFallbackEvaluation = () => {
+    const agentMessages = messages.filter(m => m.sender === 'agent').length;
+    return `
+# 📊 Session Evaluation
+
+## Performance Summary
+- **Total Responses**: ${agentMessages}
+- **Session Duration**: ${formatDuration(sessionDuration)}
+- **Communication Style**: Professional and courteous
+- **Overall Assessment**: Good progress in customer service skills
+
+## 🌟 Strengths Observed
+- Maintained professional tone
+- Engaged actively in conversation
+- Showed willingness to help
+
+## 🚀 Areas for Improvement
+- Continue practicing empathetic language
+- Ask more clarifying questions
+- Provide specific solutions when possible
+
+## Final Score: **${Math.max(75, Math.min(95, 70 + agentMessages * 3))}%**
+
+Great job on completing this training session!
+    `;
+  };
+
+  // Handle quit training
+  const handleQuitTraining = async () => {
+    const confirmQuit = window.confirm(
+      `Are you sure you want to quit this training session?\n\n` +
+      `Session Progress:\n` +
+      `• ${messages.filter(m => m.sender === 'agent').length} messages sent\n` +
+      `• ${Math.floor(sessionDuration / 60)}m ${sessionDuration % 60}s elapsed\n\n` +
+      `Your progress will not be saved.`
+    );
+
+    if (confirmQuit) {
+      try {
+        // Optional: Log quit action to backend
+        if (currentSessionId) {
+          await fetch('http://localhost:8080/api/chat/quit-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sessionId: currentSessionId,
+              tpodId: currentTpodId,
+              reason: 'user_quit',
+              duration: sessionDuration,
+              messagesExchanged: messages.filter(m => m.sender === 'agent').length
+            }),
+          }).catch(error => console.log('⚠️ Failed to log quit action:', error));
+        }
+
+        if (actions && actions.addNotification) {
+          actions.addNotification({
+            type: 'info',
+            title: 'Training Quit',
+            message: 'Training session was ended early',
+          });
+        }
+
+        navigate('/training-center');
+        
+      } catch (error) {
+        console.error('❌ Error quitting session:', error);
+        navigate('/training-center');
+      }
+    }
+  };
+
+  // Handle end session from feedback
+  const handleEndSessionFromFeedback = async () => {
+    try {
+      setIsLoading(true);
+      
+      const analysis = {
+        sessionId: currentSessionId,
+        totalMessages: messages.filter(m => m.sender === 'agent').length,
+        duration: sessionDuration,
+        summary: `Training session completed successfully. You exchanged ${messages.filter(m => m.sender === 'agent').length} messages over ${Math.floor(sessionDuration / 60)} minutes.`,
+        suggestions: [
+          'Continue practicing empathetic communication',
+          'Ask more open-ended questions to better understand customer needs',
+          'Maintain professional tone while showing genuine care',
+          'Use active listening techniques to build rapport',
+        ],
+        performanceScore: Math.min(95, Math.max(60, 70 + (messages.filter(m => m.sender === 'agent').length * 3))),
+      };
+
+      setSessionAnalysis(analysis);
+      setShowSessionResults(true);
+      setFeedbackDialogOpen(false);
+
+      if (actions && actions.endTrainingSession) {
+        actions.endTrainingSession('current-user', sessionId);
+        actions.addNotification({
+          type: 'success',
+          title: 'Session Completed',
+          message: 'Training session completed successfully via feedback helper',
+        });
+      }
+
+    } catch (error) {
+      console.error('❌ Error ending session from feedback:', error);
+      if (window.confirm('Error ending session. Would you like to return to the training center?')) {
+        navigate('/training-center');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // End session (regular)
   const handleEndSession = async () => {
     try {
       setIsLoading(true);
-
-      // Generate session analysis
+      
       const analysis = {
         sessionId: currentSessionId,
         totalMessages: messages.filter(m => m.sender === 'agent').length,
@@ -386,9 +613,9 @@ function TrainingSession() {
   return (
     <Container maxWidth="lg" sx={{ mt: 2, mb: 4 }}>
       {/* Session Results Modal */}
-      <Dialog
-        open={showSessionResults && sessionAnalysis}
-        maxWidth="md"
+      <Dialog 
+        open={showSessionResults && sessionAnalysis} 
+        maxWidth="md" 
         fullWidth
         onClose={() => setShowSessionResults(false)}
       >
@@ -452,7 +679,156 @@ function TrainingSession() {
         </DialogActions>
       </Dialog>
 
-      {/* Header */}
+      {/* Feedback Dialog */}
+      <Dialog
+        open={feedbackDialogOpen}
+        onClose={() => setFeedbackDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            borderRadius: 3,
+            maxHeight: '90vh',
+            minHeight: '60vh',
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            bgcolor: feedbackType === 'evaluation' ? '#FF9800' : '#2196F3',
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            py: 2,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {feedbackType === 'evaluation' ? <FeedbackIcon /> : <HelpIcon />}
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              {feedbackType === 'evaluation' ? '📊 Performance Evaluation' : '💡 Training Help & Tips'}
+            </Typography>
+          </Box>
+          <IconButton onClick={() => setFeedbackDialogOpen(false)} sx={{ color: 'white' }}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent sx={{ p: 0 }}>
+          {feedbackError && (
+            <Box sx={{ p: 3, pb: 0 }}>
+              <Chip
+                label="Using offline content"
+                color="warning"
+                variant="outlined"
+                size="small"
+              />
+            </Box>
+          )}
+
+          {/* Enhanced Markdown Content */}
+          <Box
+            sx={{
+              p: 3,
+              maxHeight: '60vh',
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              '& h1': { 
+                fontSize: '1.75rem', 
+                fontWeight: 700, 
+                mb: 3, 
+                color: '#1976D2',
+                borderBottom: '2px solid #E3F2FD',
+                pb: 2
+              },
+              '& h2': { 
+                fontSize: '1.4rem', 
+                fontWeight: 600, 
+                mb: 2, 
+                mt: 3,
+                color: '#333',
+              },
+              '& h3': { 
+                fontSize: '1.15rem', 
+                fontWeight: 600, 
+                mb: 1.5,
+                mt: 2,
+                color: '#555' 
+              },
+              '& p': { 
+                mb: 1.8, 
+                lineHeight: 1.7,
+                fontSize: '0.95rem',
+                color: '#444'
+              },
+              '& ul': { 
+                mb: 2, 
+                pl: 3,
+                '& li': {
+                  mb: 1,
+                  lineHeight: 1.6,
+                  fontSize: '0.9rem',
+                  color: '#555'
+                }
+              },
+              '& strong': { 
+                fontWeight: 700, 
+                color: '#1976D2' 
+              },
+            }}
+          >
+            <ReactMarkdown>{feedbackContent}</ReactMarkdown>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3, justifyContent: 'space-between', borderTop: '1px solid #E0E0E0' }}>
+          <Box>
+            <Button
+              onClick={handleQuitTraining}
+              color="error"
+              variant="outlined"
+              size="medium"
+            >
+              Quit Training
+            </Button>
+          </Box>
+          
+          <Box sx={{ display: 'flex', gap: 1.5 }}>
+            {feedbackType === 'help' && (
+              <Button
+                onClick={() => getFeedback('evaluation')}
+                variant="outlined"
+                color="warning"
+                size="medium"
+              >
+                Get Full Evaluation
+              </Button>
+            )}
+            
+            {feedbackType === 'evaluation' && (
+              <Button
+                onClick={handleEndSessionFromFeedback}
+                variant="contained"
+                color="success"
+                size="medium"
+              >
+                End Session
+              </Button>
+            )}
+            
+            <Button
+              onClick={() => setFeedbackDialogOpen(false)}
+              variant="contained"
+              color="primary"
+              size="medium"
+            >
+              Continue Training
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
+
+      {/* Header with Integrated Feedback Icons */}
       <Paper elevation={1} sx={{ p: 2, mb: 2, bgcolor: 'background.paper' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -467,21 +843,88 @@ function TrainingSession() {
                 {scenarioInfo?.title || 'Customer Service Training'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {scenarioInfo?.description || 'Customer Service Excellence'} •
-                Duration: {formatDuration(sessionDuration)} •
+                {scenarioInfo?.description || 'Customer Service Excellence'} • 
+                Duration: {formatDuration(sessionDuration)} • 
                 Status: {connectionStatus}
               </Typography>
             </Box>
           </Box>
-          <Button
-            variant="outlined"
-            color="error"
-            onClick={handleEndSession}
-            sx={{ ml: 3 }}
-          >
-            <StopIcon sx={{ mr: 1 }} />
-            End Session
-          </Button>
+          
+          {/* Action Buttons with Feedback Icons */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* Help Button */}
+            <Tooltip title="Get Training Tips & Help" arrow>
+              <IconButton
+                onClick={() => getFeedback('help')}
+                disabled={isGettingFeedback}
+                sx={{
+                  color: '#2196F3',
+                  bgcolor: 'rgba(33, 150, 243, 0.1)',
+                  border: '1px solid rgba(33, 150, 243, 0.3)',
+                  '&:hover': {
+                    bgcolor: 'rgba(33, 150, 243, 0.2)',
+                    transform: 'translateY(-1px)',
+                  },
+                  '&:disabled': {
+                    opacity: 0.6,
+                  },
+                  transition: 'all 0.2s ease-in-out',
+                }}
+              >
+                {isGettingFeedback && feedbackType === 'help' ? (
+                  <CircularProgress size={20} color="inherit" />
+                ) : (
+                  <HelpIcon />
+                )}
+              </IconButton>
+            </Tooltip>
+
+            {/* Evaluation Button */}
+            <Tooltip title="Get Performance Evaluation" arrow>
+              <IconButton
+                onClick={() => getFeedback('evaluation')}
+                disabled={isGettingFeedback}
+                sx={{
+                  color: '#FF9800',
+                  bgcolor: 'rgba(255, 152, 0, 0.1)',
+                  border: '1px solid rgba(255, 152, 0, 0.3)',
+                  '&:hover': {
+                    bgcolor: 'rgba(255, 152, 0, 0.2)',
+                    transform: 'translateY(-1px)',
+                  },
+                  '&:disabled': {
+                    opacity: 0.6,
+                  },
+                  transition: 'all 0.2s ease-in-out',
+                }}
+              >
+                {isGettingFeedback && feedbackType === 'evaluation' ? (
+                  <CircularProgress size={20} color="inherit" />
+                ) : (
+                  <FeedbackIcon />
+                )}
+              </IconButton>
+            </Tooltip>
+
+            {/* End Session Button */}
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={handleEndSession}
+              sx={{ 
+                ml: 1,
+                borderColor: '#F44336',
+                color: '#F44336',
+                '&:hover': {
+                  bgcolor: 'rgba(244, 67, 54, 0.1)',
+                  borderColor: '#D32F2F',
+                }
+              }}
+            >
+              <StopIcon sx={{ mr: 1 }} />
+              End Session
+            </Button>
+          </Box>
         </Box>
       </Paper>
 
@@ -513,8 +956,8 @@ function TrainingSession() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <Box sx={{
-                mb: 2,
+              <Box sx={{ 
+                mb: 2, 
                 display: 'flex',
                 justifyContent: message.sender === 'agent' ? 'flex-end' : 'flex-start'
               }}>
@@ -539,7 +982,6 @@ function TrainingSession() {
                     )}
                   </Box>
 
-                  {/* Emergency Fallback - Always Works */}
                   <Typography variant="body1">
                     {message && message.text
                       ? (typeof message.text === 'string'
@@ -579,16 +1021,16 @@ function TrainingSession() {
               </Typography>
             </Box>
           )}
-
+          
           <div ref={messagesEndRef} />
         </Box>
-        {/* Input Area - With Scrollable Voice Component */}
+
         {/* Input Area - Simplified Direct Send */}
         <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
           {/* Voice Toggle */}
-          <Box sx={{
-            mb: 2,
-            display: 'flex',
+          <Box sx={{ 
+            mb: 2, 
+            display: 'flex', 
             flexDirection: { xs: 'column', sm: 'row' },
             alignItems: { xs: 'stretch', sm: 'center' },
             gap: 1
@@ -598,7 +1040,7 @@ function TrainingSession() {
               onClick={() => setUseVoiceInput(!useVoiceInput)}
               startIcon={useVoiceInput ? <MicIcon /> : <MicOffIcon />}
               size="small"
-              sx={{
+              sx={{ 
                 minWidth: { xs: '100%', sm: '140px' },
                 bgcolor: useVoiceInput ? 'primary.main' : 'transparent',
                 color: useVoiceInput ? 'white' : 'primary.main',
@@ -606,7 +1048,7 @@ function TrainingSession() {
             >
               {useVoiceInput ? 'Voice Mode' : 'Text Mode'}
             </Button>
-            <Typography variant="caption" color="text.secondary" sx={{
+            <Typography variant="caption" color="text.secondary" sx={{ 
               textAlign: { xs: 'center', sm: 'left' },
               mt: { xs: 1, sm: 0 }
             }}>
@@ -617,20 +1059,20 @@ function TrainingSession() {
           {/* Conditional Input - Only ONE at a time */}
           {useVoiceInput ? (
             // Voice Input Mode - Auto Send
-            <Box sx={{
-              border: '2px dashed #1976d2',
-              borderRadius: 2,
-              p: 3,
+            <Box sx={{ 
+              border: '2px dashed #1976d2', 
+              borderRadius: 2, 
+              p: 3, 
               textAlign: 'center',
               bgcolor: 'rgba(25, 118, 210, 0.05)',
               maxHeight: '200px',
               overflowY: 'auto',
             }}>
-              <VoiceInput
-                onTranscriptSend={handleDirectVoiceSend}
+              <VoiceInput 
+                onTranscriptSend={handleDirectVoiceSend} 
                 placeholder="Click microphone and speak - message will send automatically"
               />
-
+              
               {/* Loading indicator for voice */}
               {isLoading && (
                 <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -641,10 +1083,10 @@ function TrainingSession() {
             </Box>
           ) : (
             // Text Input Mode - Manual Send
-            <Box sx={{
-              display: 'flex',
+            <Box sx={{ 
+              display: 'flex', 
               flexDirection: { xs: 'column', sm: 'row' },
-              gap: 1
+              gap: 1 
             }}>
               <TextField
                 fullWidth
@@ -667,13 +1109,13 @@ function TrainingSession() {
                   }
                 }}
               />
-
+              
               <Button
                 variant="contained"
                 onClick={handleSendMessage}
                 disabled={!currentMessage.trim() || isLoading}
                 startIcon={isLoading ? <CircularProgress size={20} /> : <SendIcon />}
-                sx={{
+                sx={{ 
                   minWidth: { xs: '100%', sm: '120px' },
                   minHeight: '56px',
                   borderRadius: 2,
@@ -684,8 +1126,6 @@ function TrainingSession() {
             </Box>
           )}
         </Box>
-
-
       </Card>
     </Container>
   );

@@ -24,6 +24,7 @@ import {
   Home as HomeIcon,
   AccessTime,
   Assignment as AssignmentIcon,
+  KeyboardVoice,
 } from '@mui/icons-material';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -83,6 +84,12 @@ function Sidebar({ open, onToggle }) {
       text: 'Training Center',
       icon: <SchoolIcon />,
       path: '/training-center?role=trainee',
+      badge: 'NEW',
+    },
+    {
+      text: 'Voice Chat',
+      icon: <KeyboardVoice />,
+      path: '/voice-chat',
       badge: 'NEW',
     },
     {

@@ -38,6 +38,7 @@ import { ROLES } from '../src/util/roles';
 
 // Styles
 import './App.css';
+import VoiceChat from './components/voiceChat/VoiceChat';
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -119,6 +120,15 @@ function App() {
                 element={
                   <ProtectedRoute requiredRoles={[ROLES.ADMIN]}>
                     <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/voice-chat"
+                element={
+                  <ProtectedRoute allowUnauthenticated={true}>
+                    <VoiceChat />
                   </ProtectedRoute>
                 }
               />
@@ -229,6 +239,7 @@ function App() {
               <Route path="/tpods/:id" element={<TpOdView />} />
               <Route path="/tpods/:id/edit" element={<TpOdForm />} />
 
+              <Route path="/voice-chat" element={<VoiceChat/>} />
 
               {/* Default Redirects */}
               <Route path="/" element={<Navigate to="/welcome" replace />} />

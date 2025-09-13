@@ -3,10 +3,6 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Box } from '@mui/material';
 
-// Context Providers
-import { UserProvider } from './context/UserContext';
-import { AppProvider } from './context/AppContext';
-
 // Layout Components
 import Header from './components/Layout/Header';
 import Sidebar from './components/Layout/Sidebar';
@@ -15,25 +11,37 @@ import ProtectedRoute from './components/Layout/ProtectedRoute';
 // Pages
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import AgentProfile from './pages/AgentProfile';
+import TrainingSession from './pages/TrainingSession';
 import Chat from './pages/Chat';
 import Profile from './pages/Profile';
-import Analytics from './pages/Analytics';
 import TrainingCenter from './pages/TrainingCenter';
-import TrainingSession from './pages/TrainingSession';
+import Analytics from './pages/Analytics';
 import Welcome from './pages/Welcome';
 
-// Admin Components  
+// Admin Components
 import PromptList from './components/Prompt/PromptList';
 import PromptForm from './components/Prompt/PromptForm';
 import PromptView from './components/Prompt/PromptView';
 import TpOdList from './components/Tpod/TpOdList';
-import TpOdView from './components/Tpod/TpOdView';
 import TpOdForm from './components/Tpod/TpOdForm';
+import TpOdView from './components/Tpod/TpOdView';
 
-// Roles
+// Context
+import { AppProvider } from './context/AppContext';
+import { UserProvider } from './context/UserContext';
+
+
+import VoiceInputDemo from './components/VoiceInput/VoiceInputDemo';
+
+
+import VoiceChat from './components/voiceChat/VoiceChat';
+
+// Utils
 import { ROLES } from './util/roles';
+// Styles
+import './App.css';
 
-// Create simple Performance component if missing
 const Performance = () => (
   <Box sx={{ p: 3 }}>
     <h2>Performance Dashboard</h2>
@@ -174,7 +182,7 @@ function App() {
               </AppLayout>
             </ProtectedRoute>
           } />
-          
+
           <Route path="/tpods/create" element={
             <ProtectedRoute requiredRoles={[ROLES.ADMIN]}>
               <AppLayout>
@@ -200,10 +208,11 @@ function App() {
           } />
 
 
-          {/* Redirects */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
+              <Route path="/voice-chat" element={<VoiceChat />} />
+              {/* Default Redirects */}
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
       </AppProvider>
     </UserProvider>
   );

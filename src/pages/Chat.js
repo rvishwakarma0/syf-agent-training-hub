@@ -44,7 +44,7 @@ const Chat = () => {
 //   const connectWebSocket = useCallback(() => {
 //     try {
 //       setError('');
-//       const ws = new WebSocket('ws://localhost:8080/nova-sonic-stream');
+//       const ws = new WebSocket('ws://3.82.22.210:8080/nova-sonic-stream');
       
 //       ws.onopen = () => {
 //         console.log('🔗 Connected to Nova Sonic WebSocket');
@@ -93,7 +93,7 @@ const connectWebSocket = useCallback(() => {
       setStatus('Connecting...');
       
       // ✅ FIXED: Use SockJS client instead of raw WebSocket
-      const socket = new SockJS('http://localhost:8080/nova-sonic-stream');
+      const socket = new SockJS('http://3.82.22.210:8080/nova-sonic-stream');
       
       socket.onopen = () => {
         console.log('🔗 Connected to Nova Sonic via SockJS');

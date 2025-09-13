@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // API Configuration - matches your Spring Boot backend
-const PROMPT_API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api/prompts';
+const PROMPT_API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://3.82.22.210:8080/api/prompts';
 
 // Create axios instance with default config
 const promptApiClient = axios.create({

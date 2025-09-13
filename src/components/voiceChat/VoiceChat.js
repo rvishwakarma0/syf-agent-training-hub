@@ -6,7 +6,6 @@ export default function VoiceChat() {
 
   let chatHistory = "";
 
-
   window.addEventListener('message', (event) => {
     if (event.data?.type === 'chatHistory') {
       chatHistory = event.data.data;
@@ -35,7 +34,7 @@ export default function VoiceChat() {
 </Button>
     <div style={{ height: '80vh', width: '100%' }}>
       <iframe
-        src="http://localhost:5173?data=abc"
+        src="http://https://syf-voice-stream.vercel.app/?data=abc"
         title="Voice Chat App"
         width="100%"
         height="100%"

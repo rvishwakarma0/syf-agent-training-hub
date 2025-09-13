@@ -14,7 +14,7 @@ const VoiceChat = () => {
 
   // Initialize WebSocket connection
   const connectWebSocket = useCallback(() => {
-    const ws = new WebSocket('ws://localhost:8080/voice-stream');
+    const ws = new WebSocket('ws://3.82.22.210:8080/voice-stream');
     ws.binaryType = 'arraybuffer';
     
     ws.onopen = () => {

@@ -1,12 +1,12 @@
 import axios from 'axios';
 
-// API Configuration
-const API_BASE_URL = 'https://cld1z37z1e.execute-api.us-east-1.amazonaws.com/demo';
+// API Configuration - Update to your Spring Boot server
+const API_BASE_URL = 'http://localhost:8080/api'; // Change to your Spring Boot server URL
 
 // Create axios instance with default config
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000, // Increased timeout
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -16,7 +16,7 @@ const apiClient = axios.create({
 // Request interceptor for logging
 apiClient.interceptors.request.use(
   (config) => {
-    console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`, config.data);
+    console.log(`🚀 Spring Boot API Request: ${config.method?.toUpperCase()} ${config.url}`, config.data);
     return config;
   },
   (error) => {
@@ -28,44 +28,26 @@ apiClient.interceptors.request.use(
 // Response interceptor for error handling
 apiClient.interceptors.response.use(
   (response) => {
-    console.log(`✅ API Response: ${response.status}`, response.data);
+    console.log(`✅ Spring Boot API Response: ${response.status}`, response.data);
     return response;
   },
   (error) => {
-    console.error('❌ API Response Error:', {
+    console.error('❌ Spring Boot API Response Error:', {
       message: error.message,
       status: error.response?.status,
       data: error.response?.data,
-      headers: error.response?.headers,
     });
-    
-    // Handle CORS specifically
-    if (error.message.includes('CORS') || error.message.includes('Access-Control-Allow-Origin')) {
-      console.error('🔒 CORS Error detected - API Gateway may need CORS configuration');
-    }
-    
-    // Handle specific error cases
-    if (error.response?.status === 403) {
-      console.error('🚫 Authentication Token Missing or Invalid');
-    } else if (error.response?.status === 500) {
-      console.error('💥 Internal Server Error');
-    } else if (error.code === 'ECONNABORTED') {
-      console.error('⏰ Request Timeout');
-    } else if (error.code === 'ERR_NETWORK') {
-      console.error('🌐 Network Error - Check internet connection');
-    }
-    
     return Promise.reject(error);
   }
 );
 
-// API Service Functions
+// API Service Functions for Spring Boot Integration
 export const apiService = {
-  // Health Check - Using actual deployed endpoint
+  // Health Check
   async healthCheck() {
     try {
-      // Use get-analysis endpoint as health check since it's deployed
-      const response = await apiClient.get('/get-analysis/health-check-123');
+      // Simple endpoint check - you can add a health endpoint to your Spring Boot app
+      const response = await apiClient.get('/chat/health');
       return {
         success: true,
         data: response.data,
@@ -77,76 +59,47 @@ export const apiService = {
         error: error.message,
         fallback: {
           status: 'healthy',
-          message: 'Health check completed (fallback)',
+          message: 'Spring Boot API available',
           timestamp: new Date().toISOString(),
         },
       };
     }
   },
 
-  // Test direct API call without browser CORS
-  async testApiDirect() {
-    console.log('🧪 Testing direct API call to:', API_BASE_URL);
-    
-    try {
-      // Test with your actual deployed endpoint - get-analysis with demo session
-      const response = await fetch(`${API_BASE_URL}/get-analysis/demo-test-123`, {
-        method: 'GET',
-        mode: 'cors', // Explicitly request CORS
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      console.log('✅ Direct API test successful:', response.status);
-      const data = await response.text();
-      console.log('📋 Response data:', data);
-      return { success: true, status: response.status, data };
-    } catch (error) {
-      console.log('❌ Direct API test failed:', error.message);
-      return { success: false, error: error.message };
-    }
-  },
-
-  // Start Training Scenario
+  // Start Training Pod Session
   async startScenario(scenarioData) {
     try {
-      // Fixed payload structure to match your Lambda API
-      const payload = {
-        scenarioType: scenarioData.scenario || "customer_service", 
-        emotion: "frustrated", // Default emotion
-        difficultyLevel: "medium" // Default difficulty
+      console.log('🚀 Starting Spring Boot pod session with:', scenarioData);
+      
+      // Map frontend scenario to tpodId
+      const tpodMapping = {
+        'customer-service': 'customer-support-tpod',
+        'sales-conversation': 'sales-training-tpod', 
+        'difficult-customer': 'difficult-customer-tpod',
+        'loan-consultation': 'loan-consultation-tpod',
       };
 
-      console.log('Calling AWS Lambda /start-scenario with payload:', payload);
-      const response = await apiClient.post('/start-scenario', payload);
-      
-      // Handle your specific response structure
-      if (response.data && response.data.body) {
-        const responseBody = typeof response.data.body === 'string' 
-          ? JSON.parse(response.data.body) 
-          : response.data.body;
-          
-        return {
-          success: responseBody.success,
-          data: {
-            sessionId: responseBody.sessionId,
-            scenario: responseBody.scenarioDescription,
-            initialMessage: responseBody.initialMessage,
-            customerEmotion: 'frustrated',
-            success: responseBody.success
-          },
-        };
-      }
+      const payload = {
+        tpodId: tpodMapping[scenarioData.scenario] || 'customer-support-tpod',
+        userId: 'current-user' // You can get this from user context
+      };
+
+      const response = await apiClient.post('/chat/start-pod', payload);
       
       return {
         success: true,
-        data: response.data,
+        data: {
+          sessionId: response.data.sessionId,
+          scenario: scenarioData.scenario,
+          initialMessage: response.data.message,
+          customerEmotion: 'neutral',
+          timestamp: response.data.timestamp,
+        },
       };
     } catch (error) {
-      console.warn('Start Scenario API failed, using fallback response:', error.message);
+      console.warn('Start Scenario API failed, using fallback:', error.message);
       
-      // Fallback response for demo purposes
+      // Fallback response
       return {
         success: true,
         data: {
@@ -154,218 +107,152 @@ export const apiService = {
           scenario: scenarioData.scenario,
           initialMessage: this.getScenarioMessage(scenarioData.scenario),
           customerEmotion: 'frustrated',
-          difficulty: this.getScenarioDifficulty(scenarioData.scenario),
-          success: true,
         },
         fallback: true,
       };
     }
   },
 
-  // Send Message
+  // Send Message to Spring Boot API
   async sendMessage(messageData) {
     try {
-      // Fixed payload structure to match your Lambda API
+      console.log('💬 Sending message to Spring Boot API:', messageData);
+
       const payload = {
         sessionId: messageData.sessionId,
+        tpodId: messageData.tpodId || 'customer-support-tpod', // You'll need to track this
         message: messageData.message
       };
 
-      console.log('Calling AWS Lambda /send-message with payload:', payload);
-      const response = await apiClient.post('/send-message', payload);
+      const response = await apiClient.post('/chat/message', payload);
       
-      // Handle your specific response structure
-      if (response.data && response.data.body) {
-        const responseBody = typeof response.data.body === 'string' 
-          ? JSON.parse(response.data.body) 
-          : response.data.body;
-          
-        return {
-          success: responseBody.success,
-          data: {
-            sessionId: responseBody.sessionId || messageData.sessionId,
-            empathyScore: responseBody.empathyScore,
-            responseTime: responseBody.responseTimeMs / 1000, // Convert to seconds
-            aiResponse: responseBody.aiResponse,
-            feedback: responseBody.feedback,
-            timeFeedback: responseBody.timeFeedback,
-            responseTimeAnalysis: responseBody.responseTimeAnalysis,
-            success: responseBody.success
-          },
-        };
-      }
+      // Parse evaluation message for empathy score
+      const empathyScore = this.extractEmpathyScore(response.data.evalMsg);
       
       return {
         success: true,
-        data: response.data,
+        data: {
+          sessionId: response.data.sessionId,
+          empathyScore: empathyScore,
+          responseTime: 2.0, // You can calculate this
+          aiResponse: response.data.message,
+          feedback: response.data.evalMsg,
+          timestamp: response.data.timestamp,
+        },
       };
     } catch (error) {
-      console.warn('Send Message API failed, using fallback response:', error.message);
+      console.warn('Send Message API failed, using fallback:', error.message);
       
       // Fallback response with simulated empathy scoring
       const empathyScore = this.calculateEmpathyScore(messageData.message);
-      
       return {
         success: true,
         data: {
           sessionId: messageData.sessionId,
           empathyScore: empathyScore,
-          responseTime: Math.random() * 3 + 1, // 1-4 seconds
+          responseTime: Math.random() * 3 + 1,
           aiResponse: this.generateAIResponse(messageData.message, empathyScore),
           feedback: this.generateFeedback(empathyScore),
-          keywords: this.extractEmpathyKeywords(messageData.message),
-          success: true,
         },
         fallback: true,
       };
     }
   },
 
-  // Get Analysis
+  // Get Session Analysis (you'll need to add this endpoint to Spring Boot)
   async getAnalysis(sessionId) {
     try {
-      console.log('Calling AWS Lambda /get-analysis for sessionId:', sessionId);
-      const response = await apiClient.get(`/get-analysis/${sessionId}`);
+      console.log('📊 Getting session analysis for:', sessionId);
       
-      // Handle your specific response structure
-      if (response.data && response.data.body) {
-        const responseBody = typeof response.data.body === 'string' 
-          ? JSON.parse(response.data.body) 
-          : response.data.body;
-          
-        return {
-          success: responseBody.success,
-          data: {
-            sessionId: responseBody.sessionId,
-            overallScore: responseBody.overallScore,
-            totalMessages: responseBody.totalMessages,
-            suggestions: responseBody.suggestions,
-            summary: responseBody.summary,
-            success: responseBody.success
-          },
-        };
-      }
+      // You'll need to add this endpoint to your Spring Boot API
+      const response = await apiClient.get(`/chat/analysis/${sessionId}`);
       
       return {
         success: true,
         data: response.data,
       };
     } catch (error) {
-      console.warn('Get Analysis API failed, using fallback response:', error.message);
+      console.warn('Get Analysis API failed, using fallback:', error.message);
       
-      // Fallback response for demo purposes
+      // Fallback response
       return {
         success: true,
         data: {
           sessionId: sessionId,
-          overallScore: Math.floor(Math.random() * 20) + 80, // 80-100
-          totalMessages: Math.floor(Math.random() * 10) + 5, // 5-15
-          averageResponseTime: Math.random() * 2 + 1.5, // 1.5-3.5 seconds
-          empathyKeywords: ['understand', 'apologize', 'help', 'sorry', 'appreciate'],
-          strengths: [
-            'Excellent use of empathy keywords',
-            'Professional tone maintained',
-            'Quick response times',
-          ],
-          improvements: [
+          overallScore: Math.floor(Math.random() * 20) + 80,
+          totalMessages: Math.floor(Math.random() * 10) + 5,
+          summary: 'Training session completed successfully. Good empathy and communication skills demonstrated.',
+          suggestions: [
+            'Continue using empathetic language',
             'Ask more open-ended questions',
-            'Use customer name more frequently',
-            'Provide more specific solutions',
+            'Acknowledge customer emotions more frequently'
           ],
-          sessionDuration: this.formatDuration(Math.random() * 20 + 10), // 10-30 minutes
-          customerSatisfaction: Math.floor(Math.random() * 20) + 80, // 80-100
-          recommendation: 'Ready for advanced scenarios',
         },
         fallback: true,
       };
     }
   },
 
-  // Helper Functions for Fallback Responses
-  getScenarioMessage(scenario) {
-    const scenarios = {
-      'billing_issue': "I'm really confused about this charge on my bill. I never signed up for premium support, but I'm being charged $49.99 every month. This is really frustrating!",
-      'customer_complaint': "I've been trying to resolve this issue for weeks now, and nobody seems to be able to help me. I'm considering switching to another bank entirely!",
-      'workplace_conflict': "There's been some tension with my colleagues lately, and it's affecting my work performance. I'm not sure how to handle this situation professionally.",
-      'technical_support': "I can't access my online banking account. I keep getting error messages, and I need to pay some bills urgently. Can you help me figure this out?",
-      'family_crisis': "I'm going through a difficult time with my family right now, and it's impacting my ability to focus at work. I need some guidance on available support resources.",
-      'medical_concern': "I have some health issues that might require extended time off work. I'm worried about how this will affect my job security and benefits.",
-      'financial_stress': "I'm struggling to make ends meet with my current salary, and I'm considering taking on additional work. How can the company support me during this difficult time?",
-      'relationship_issue': "I'm having relationship problems that are affecting my mental health and work performance. I need advice on work-life balance and available counseling services.",
-    };
+  // Helper function to extract empathy score from evaluation message
+  extractEmpathyScore(evalMsg) {
+    if (!evalMsg) return 75;
     
-    return scenarios[scenario] || "I have a concern that I'd like to discuss with you. Can you help me understand my options?";
+    // Simple regex to extract score (you can improve this based on your evaluator format)
+    const scoreMatch = evalMsg.match(/score[:\s]*(\d+)/i);
+    if (scoreMatch) {
+      return parseInt(scoreMatch[1]);
+    }
+    
+    // Fallback: analyze keywords for empathy
+    return this.calculateEmpathyScore(evalMsg);
   },
 
-  getScenarioDifficulty(scenario) {
-    const difficulties = {
-      'billing_issue': 6,
-      'customer_complaint': 8,
-      'workplace_conflict': 7,
-      'technical_support': 4,
-      'family_crisis': 9,
-      'medical_concern': 8,
-      'financial_stress': 7,
-      'relationship_issue': 9,
+  // Helper Functions (keep existing ones)
+  getScenarioMessage(scenario) {
+    const scenarios = {
+      'customer-service': "I'm really frustrated with your service! I've been trying to resolve this issue for weeks and nobody seems to care. Can you actually help me?",
+      'sales-conversation': "I'm interested in your loan products, but I've had bad experiences with banks before. Why should I trust you?",
+      'difficult-customer': "This is absolutely ridiculous! I've been charged fees that I never agreed to. I want these charges removed NOW!",
+      'loan-consultation': "I need a loan but my credit isn't perfect. I'm worried you'll just reject me like the other banks did.",
     };
-    
-    return difficulties[scenario] || 5;
+    return scenarios[scenario] || "I have a concern that I'd like to discuss with you. Can you help me?";
   },
 
   calculateEmpathyScore(message) {
     const empathyKeywords = [
       'understand', 'sorry', 'apologize', 'help', 'support', 'appreciate',
-      'empathize', 'concern', 'worry', 'difficult', 'challenging', 'frustrated',
-      'feel', 'important', 'priority', 'care', 'assist', 'resolve'
+      'empathize', 'concern', 'worry', 'difficult', 'challenging'
     ];
     
     const words = message.toLowerCase().split(/\s+/);
-    const keywordCount = words.filter(word => 
+    const keywordCount = words.filter(word =>
       empathyKeywords.some(keyword => word.includes(keyword))
     ).length;
     
-    // Base score + bonus for keywords + bonus for length + random variation
-    let score = 60 + (keywordCount * 8) + Math.min(words.length / 10, 15) + Math.random() * 10;
-    
-    // Ensure score is between 45 and 100
+    let score = 60 + (keywordCount * 8) + Math.min(words.length / 10, 15);
     return Math.min(Math.max(Math.round(score), 45), 100);
-  },
-
-  extractEmpathyKeywords(message) {
-    const empathyKeywords = [
-      'understand', 'sorry', 'apologize', 'help', 'support', 'appreciate',
-      'empathize', 'concern', 'assist', 'resolve'
-    ];
-    
-    const words = message.toLowerCase().split(/\s+/);
-    return empathyKeywords.filter(keyword => 
-      words.some(word => word.includes(keyword))
-    );
   },
 
   generateAIResponse(userMessage, empathyScore) {
     const responses = {
-      high: [ // 85+
-        "Thank you so much for being so understanding and patient with me. Your empathetic approach really helps.",
-        "I really appreciate how you explained that. It makes me feel much better about the situation.",
-        "You've been incredibly helpful and kind. I feel confident that we can resolve this together.",
+      high: [
+        "Thank you so much for being understanding. Your empathetic approach really helps.",
+        "I really appreciate how you explained that. It makes me feel much better.",
       ],
-      medium: [ // 70-84
-        "That's helpful, thank you. I'm starting to understand the situation better.",
-        "Okay, I appreciate you looking into this for me. What are the next steps?",
-        "I understand. Can you help me figure out what I need to do to fix this?",
+      medium: [
+        "That's helpful, thank you. I'm starting to understand better.",
+        "Okay, I appreciate you looking into this for me.",
       ],
-      low: [ // Below 70
+      low: [
         "I'm still not sure I understand. Can you explain this differently?",
-        "This is still confusing to me. Are there other options available?",
-        "I'm getting frustrated because this doesn't seem to be helping my situation.",
+        "This is still confusing to me. Are there other options?",
       ],
     };
-    
+
     let category = 'medium';
     if (empathyScore >= 85) category = 'high';
     else if (empathyScore < 70) category = 'low';
-    
+
     const categoryResponses = responses[category];
     return categoryResponses[Math.floor(Math.random() * categoryResponses.length)];
   },
@@ -376,18 +263,10 @@ export const apiService = {
     } else if (empathyScore >= 80) {
       return "Great empathy keywords used! Consider asking more open-ended questions.";
     } else if (empathyScore >= 70) {
-      return "Good response! Try using more empathetic language like 'I understand' or 'I appreciate'.";
-    } else if (empathyScore >= 60) {
-      return "Room for improvement. Focus on acknowledging the customer's feelings first.";
+      return "Good response! Try using more empathetic language.";
     } else {
-      return "Consider starting with empathy. Try phrases like 'I understand your frustration' or 'I'm sorry you're experiencing this'.";
+      return "Consider starting with empathy. Try phrases like 'I understand your frustration'.";
     }
-  },
-
-  formatDuration(minutes) {
-    const mins = Math.floor(minutes);
-    const secs = Math.floor((minutes - mins) * 60);
-    return `${mins}m ${secs}s`;
   },
 };
 

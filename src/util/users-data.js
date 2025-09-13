@@ -96,13 +96,13 @@ const userdata = [
   },
   {
     "name": "Alex Johnson",
-    "sso-id": "2468013579",
-    "role": "trainee"
+    "sso-id": "1111111111",
+    "role": "admin"
   }
 ];
 
 
 export function getUserBySsoId(ssoId) {
-    const user = userdata.find(user => user['sso-id'] === ssoId);
-    return user || null;
+  const user = userdata.find(user => user['sso-id'] === ssoId);
+  return user || null;
 };

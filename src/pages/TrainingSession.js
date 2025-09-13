@@ -1,33 +1,140 @@
+// src/pages/TrainingSession.js - Complete Code with Fixed Voice Input
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
   Typography,
-  Grid,
   Card,
   Box,
   Button,
   TextField,
   Avatar,
-  LinearProgress,
   Paper,
   IconButton,
   Chip,
-  Alert,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
   Send as SendIcon,
   Stop as StopIcon,
-  Lightbulb as LightbulbIcon,
-  Psychology as PsychologyIcon,
-  Timer as TimerIcon,
-  TrendingUp as TrendingUpIcon,
+  Mic as MicIcon,
+  MicOff as MicOffIcon,
+  Person as PersonIcon,
 } from '@mui/icons-material';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useApp } from '../context/AppContext';
-import apiService from '../services/apiService';
+import VoiceInput from '../components/VoiceInput/VoiceInput';
+
+// Updated apiService for Spring Boot integration
+const apiService = {
+  // Start Pod Session
+  async startPod(scenarioData) {
+    const API_BASE_URL = 'http://localhost:8080/api';
+
+    try {
+      const tpodMapping = {
+        'customer-service': 'customer-support-tpod',
+        'sales-conversation': 'sales-training-tpod',
+        'difficult-customer': 'difficult-customer-tpod',
+        'loan-consultation': 'loan-consultation-tpod',
+      };
+
+      const payload = {
+        tpodId: tpodMapping[scenarioData.scenario] || 'customer-support-tpod',
+        userId: 'current-user'
+      };
+
+      console.log('🚀 Starting Spring Boot pod session:', payload);
+
+      const response = await fetch(`${API_BASE_URL}/chat/start-pod`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Pod session started:', data);
+
+      return {
+        success: true,
+        data: {
+          sessionId: data.sessionId,
+          scenario: scenarioData.scenario,
+          tpodId: payload.tpodId,
+          initialMessage: data.message,
+          timestamp: data.timestamp,
+        },
+      };
+    } catch (error) {
+      console.error('❌ Start pod session failed:', error);
+      return {
+        success: false,
+        error: error.message,
+        fallback: true,
+      };
+    }
+  },
+
+  // Send Message
+  async sendMessage(messageData) {
+    const API_BASE_URL = 'http://localhost:8080/api';
+
+    try {
+      const payload = {
+        sessionId: messageData.sessionId,
+        tpodId: messageData.tpodId,
+        message: messageData.message,
+      };
+
+      console.log('💬 Sending message to Spring Boot:', payload);
+
+      const response = await fetch(`${API_BASE_URL}/chat/message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Message response received:', data);
+
+      return {
+        success: true,
+        data: {
+          sessionId: data.sessionId,
+          aiResponse: typeof data.message === 'string'
+            ? data.message
+            : JSON.stringify(data.message),
+          feedback: data.evalMsg,
+          timestamp: data.timestamp,
+        },
+      };
+    } catch (error) {
+      console.error('❌ Send message failed:', error);
+      return {
+        success: false,
+        error: error.message,
+        fallback: true,
+      };
+    }
+  },
+};
 
 function TrainingSession() {
   const { sessionId } = useParams();
@@ -35,72 +142,59 @@ function TrainingSession() {
   const { state, actions } = useApp();
   const messagesEndRef = useRef(null);
 
+  // State management
   const [messages, setMessages] = useState([]);
   const [currentMessage, setCurrentMessage] = useState('');
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [currentTpodId, setCurrentTpodId] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
-  const [empathyScore, setEmpathyScore] = useState(0);
-  const [responseTime, setResponseTime] = useState(0);
   const [sessionDuration, setSessionDuration] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [feedback, setFeedback] = useState('');
   const [scenarioInfo, setScenarioInfo] = useState(null);
   const [showSessionResults, setShowSessionResults] = useState(false);
   const [sessionAnalysis, setSessionAnalysis] = useState(null);
-  const [metrics, setMetrics] = useState({
-    empathyKeywords: 0,
-    activeListening: 0,
-    solutionOriented: 0,
-    politeness: 0,
-  });
+  const [useVoiceInput, setUseVoiceInput] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('connecting');
 
-  // Scenario definitions for direct access
+  // Scenario definitions
   const scenarios = {
     'customer-service': {
       title: 'Customer Service Excellence',
       description: 'Practice handling customer complaints with empathy',
-      initialMessage: "Hi, I'm really frustrated with your service! I've been trying to resolve this issue for weeks and nobody seems to care. Can you actually help me or are you going to give me the runaround like everyone else?"
+      tpodId: 'customer-support-tpod',
     },
     'sales-conversation': {
       title: 'Sales Conversation',
       description: 'Learn to build rapport and close deals effectively',
-      initialMessage: "I'm interested in your loan products, but I've had bad experiences with banks before. Why should I trust you guys? What makes you different?"
+      tpodId: 'sales-training-tpod',
     },
     'difficult-customer': {
       title: 'Difficult Customer Handling',
       description: 'De-escalate tense situations with angry customers',
-      initialMessage: "This is absolutely ridiculous! I've been charged fees that I never agreed to, and when I called last time, your representative was completely useless. I want these charges removed NOW!"
+      tpodId: 'difficult-customer-tpod',
     },
     'loan-consultation': {
       title: 'Loan Consultation',
       description: 'Guide customers through loan application process',
-      initialMessage: "I need a loan but my credit isn't perfect. I'm worried you'll just reject me like the other banks did. Is there even a point in applying?"
-    }
+      tpodId: 'loan-consultation-tpod',
+    },
   };
 
-  // Find session and agent, or create mock data for direct access
-  const session = state.sessions[sessionId] || {
-    scenario: sessionId,
-    agentId: 'current-user'
-  };
-  
-  const agent = state.agents.find(a => a.id === session.agentId) || {
-    id: 'current-user',
-    name: 'Training Agent',
-    avatar: '👤'
-  };
-
+  // Initialize session
   useEffect(() => {
-    // Set scenario info
     const currentScenario = scenarios[sessionId] || scenarios['customer-service'];
     setScenarioInfo(currentScenario);
+    setCurrentTpodId(currentScenario.tpodId);
 
-    // Initialize session with scenario message
     const initializeSession = async () => {
       setIsLoading(true);
+      setConnectionStatus('connecting');
+
       try {
-        console.log('Starting scenario for:', sessionId);
-        const response = await apiService.startScenario({
-          scenario: sessionId, // Use sessionId as scenario type
+        console.log('🚀 Initializing Spring Boot session for:', sessionId);
+
+        const response = await apiService.startPod({
+          scenario: sessionId,
         });
 
         if (response && response.success) {
@@ -109,38 +203,31 @@ function TrainingSession() {
             sender: 'customer',
             text: response.data.initialMessage,
             timestamp: new Date(),
-            emotion: response.data.customerEmotion || 'frustrated',
+            emotion: 'neutral',
           };
+
           setMessages([initialMessage]);
-          
-          // Store the real sessionId from AWS
-          if (response.data.sessionId) {
-            console.log('Real AWS Session ID:', response.data.sessionId);
-            // Update URL or store sessionId for future API calls
-            window.awsSessionId = response.data.sessionId;
-          }
+          setCurrentSessionId(response.data.sessionId);
+          setCurrentTpodId(response.data.tpodId);
+          setConnectionStatus('connected');
+
+          console.log('✅ Session initialized:', response.data.sessionId);
         } else {
-          // Fallback with scenario data
-          const initialMessage = {
-            id: 1,
-            sender: 'customer',
-            text: currentScenario.initialMessage,
-            timestamp: new Date(),
-            emotion: 'frustrated',
-          };
-          setMessages([initialMessage]);
+          throw new Error('Failed to start pod session');
         }
       } catch (error) {
-        console.error('Failed to initialize session:', error);
-        // Fallback with scenario data
-        const initialMessage = {
+        console.error('❌ Failed to initialize session:', error);
+        setConnectionStatus('error');
+
+        // Fallback message
+        const fallbackMessage = {
           id: 1,
           sender: 'customer',
-          text: currentScenario.initialMessage,
+          text: "Hello! I have a concern I'd like to discuss. Can you help me?",
           timestamp: new Date(),
-          emotion: 'frustrated',
+          emotion: 'neutral',
         };
-        setMessages([initialMessage]);
+        setMessages([fallbackMessage]);
       } finally {
         setIsLoading(false);
       }
@@ -156,6 +243,7 @@ function TrainingSession() {
     return () => clearInterval(timer);
   }, [sessionId]);
 
+  // Auto-scroll to bottom
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -170,177 +258,110 @@ function TrainingSession() {
     return `${mins}m ${secs}s`;
   };
 
-  const handleSendMessage = async () => {
-    if (!currentMessage.trim() || isLoading) return;
+  // Handle voice message - populate text field without auto-sending
+  const handleVoiceMessage = (transcript) => {
+    // ✅ Ensure transcript is always a string
+    const safeTranscript = String(transcript || '').trim();
+    console.log('🎤 Voice transcript:', safeTranscript, 'Type:', typeof safeTranscript);
 
-    const startTime = Date.now();
+    if (safeTranscript) {
+      setCurrentMessage(safeTranscript);
+    }
+  };
+
+  // Direct voice send - no review needed
+  const handleDirectVoiceSend = (transcript) => {
+    const safeTranscript = String(transcript || '').trim();
+    if (safeTranscript && !isLoading) {
+      console.log('🎤 Direct voice send:', safeTranscript);
+      // Send directly without setting currentMessage
+      handleSendMessage(safeTranscript);
+    }
+  };
+
+
+  // Send message to Spring Boot API
+  const handleSendMessage = async (messageOverride = null) => {
+    // ✅ Ensure messageToSend is always a string
+    const messageToSend = messageOverride || currentMessage || '';
+    const trimmedMessage = String(messageToSend).trim();
+
+    if (!trimmedMessage || isLoading) return;
+
     setIsLoading(true);
     setIsTyping(true);
 
-    // Add user message
+    // ✅ FIXED: Ensure text is always a string
     const userMessage = {
-      id: Date.now(), // Use timestamp for unique ID
+      id: Date.now(),
       sender: 'agent',
-      text: currentMessage,
+      text: String(trimmedMessage), // ✅ Force string conversion
       timestamp: new Date(),
     };
 
+    console.log('✅ User message created:', userMessage);
     setMessages(prev => [...prev, userMessage]);
-    const messageToSend = currentMessage;
     setCurrentMessage('');
 
     try {
-      // Use real AWS sessionId if available, otherwise use route sessionId
-      const sessionIdToUse = window.awsSessionId || sessionId;
-      console.log('Sending message to AWS Lambda with sessionId:', sessionIdToUse);
-      
-      // Call your real AWS API
       const response = await apiService.sendMessage({
-        sessionId: sessionIdToUse,
-        message: messageToSend,
+        sessionId: currentSessionId,
+        tpodId: currentTpodId,
+        message: trimmedMessage,
       });
 
-      const endTime = Date.now();
-      const responseTimeMs = endTime - startTime;
-
       if (response && response.success) {
-        // Update metrics with real AWS response
-        const realEmpathyScore = response.data.empathyScore || 75;
-        setEmpathyScore(realEmpathyScore);
-        setResponseTime(response.data.responseTime || responseTimeMs / 1000);
-        setFeedback(response.data.feedback || 'Good response!');
-        
-        // Update complex metrics
-        setMetrics({
-          empathyKeywords: Math.min(realEmpathyScore + Math.random() * 10, 100),
-          activeListening: Math.min(realEmpathyScore - 5 + Math.random() * 10, 100),
-          solutionOriented: Math.min(realEmpathyScore - 10 + Math.random() * 15, 100),
-          politeness: Math.min(realEmpathyScore + 5 + Math.random() * 5, 100),
-        });
-
-        // Add real AI response from AWS
         setTimeout(() => {
           const aiMessage = {
-            id: Date.now(), // Use timestamp for unique ID
+            id: Date.now() + 1,
             sender: 'customer',
-            text: response.data.aiResponse || 'Thank you for your response.',
+            // ✅ FIXED: Ensure AI response is always a string
+            text: String(response.data.aiResponse || 'Thank you for your response.'),
             timestamp: new Date(),
-            emotion: realEmpathyScore >= 80 ? 'satisfied' : 
-                    realEmpathyScore >= 60 ? 'neutral' : 'frustrated',
+            emotion: 'neutral',
           };
-          
-          // Only add the AI response, user message already added above
+
+          console.log('✅ AI message created:', aiMessage);
           setMessages(prev => [...prev, aiMessage]);
           setIsTyping(false);
-        }, 1500);
-      } else {
-        // Fallback simulation
-        const simulatedScore = Math.min(60 + Math.random() * 30, 100);
-        setEmpathyScore(simulatedScore);
-        setResponseTime(responseTimeMs / 1000);
-        setFeedback(simulatedScore >= 80 ? "Great empathetic response!" : "Try to show more understanding.");
-        
-        setMetrics({
-          empathyKeywords: Math.min(simulatedScore + Math.random() * 10, 100),
-          activeListening: Math.min(simulatedScore - 5 + Math.random() * 10, 100),
-          solutionOriented: Math.min(simulatedScore - 10 + Math.random() * 15, 100),
-          politeness: Math.min(simulatedScore + 5 + Math.random() * 5, 100),
-        });
-
-        // Simulated responses
-        const responses = [
-          "Thank you for understanding. I appreciate your help with this.",
-          "I'm feeling a bit better about this situation now.",
-          "Okay, I see what you're saying. What should I do next?",
-          "That makes sense. I hadn't thought of it that way.",
-          "I still have some concerns, but you're being helpful."
-        ];
-
-        setTimeout(() => {
-          const aiMessage = {
-            id: Date.now() + 1, // Use timestamp for unique ID
-            sender: 'customer',
-            text: responses[Math.floor(Math.random() * responses.length)],
-            timestamp: new Date(),
-            emotion: simulatedScore >= 80 ? 'satisfied' : 
-                    simulatedScore >= 60 ? 'neutral' : 'frustrated',
-          };
-          
-          // Only add the AI response, user message already added above
-          setMessages(prev => [...prev, aiMessage]);
-          setIsTyping(false);
-        }, 1500);
-      }
-
-      // Update agent empathy score in global state if available
-      if (actions && actions.updateEmpathyScore) {
-        actions.updateEmpathyScore(agent.id, empathyScore);
+        }, 1000);
       }
     } catch (error) {
-      console.error('Failed to send message:', error);
-      
-      // On error, still provide fallback response so conversation continues
-      const fallbackScore = Math.min(60 + Math.random() * 20, 100);
-      setEmpathyScore(fallbackScore);
-      setResponseTime(3.0);
-      setFeedback("Message sent! (Using fallback due to API connectivity)");
-      
-      // Add fallback AI response
-      setTimeout(() => {
-        const aiMessage = {
-          id: Date.now() + 2,
-          sender: 'customer',
-          text: "I understand you're trying to help. Let me think about what you've said.",
-          timestamp: new Date(),
-          emotion: 'neutral',
-        };
-        
-        setMessages(prev => [...prev, aiMessage]);
-        setIsTyping(false);
-      }, 1500);
-      
+      console.error('❌ Failed to send message:', error);
       setIsTyping(false);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // End session
   const handleEndSession = async () => {
     try {
       setIsLoading(true);
-      
-      // Get session analysis from API
-      const sessionIdToUse = window.awsSessionId || sessionId;
-      console.log('Ending session and fetching analysis for:', sessionIdToUse);
-      
-      const analysisResponse = await apiService.getAnalysis(sessionIdToUse);
-      
-      if (analysisResponse && analysisResponse.success) {
-        setSessionAnalysis(analysisResponse.data);
-        setShowSessionResults(true);
-        
-        // Update context
-        if (actions && actions.endTrainingSession) {
-          actions.endTrainingSession(agent.id, sessionId);
-          actions.addNotification({
-            type: 'success',
-            title: 'Session Completed',
-            message: `Training session completed successfully`,
-          });
-        }
-      } else {
-        console.error('Failed to get session analysis');
-        // Navigate back anyway
-        navigate('/training-center');
-      }
+
+      // Generate session analysis
+      const analysis = {
+        sessionId: currentSessionId,
+        totalMessages: messages.filter(m => m.sender === 'agent').length,
+        summary: 'Training session completed successfully.',
+        suggestions: [
+          'Continue practicing empathetic communication',
+          'Ask more open-ended questions to better understand customer needs',
+          'Maintain professional tone while showing genuine care',
+        ],
+      };
+
+      setSessionAnalysis(analysis);
+      setShowSessionResults(true);
     } catch (error) {
-      console.error('Error ending session:', error);
+      console.error('❌ Error ending session:', error);
       navigate('/training-center');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Utility functions
   const getEmotionColor = (emotion) => {
     switch (emotion) {
       case 'satisfied': return '#28a745';
@@ -350,16 +371,11 @@ function TrainingSession() {
     }
   };
 
-  const getEmpathyScoreColor = (score) => {
-    if (score >= 85) return '#28a745';
-    if (score >= 70) return '#ffc107';
-    return '#dc3545';
-  };
-
+  // Loading state
   if (isLoading && messages.length === 0) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4, textAlign: 'center' }}>
-        <CircularProgress />
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4, textAlign: 'center' }}>
+        <CircularProgress size={60} />
         <Typography variant="h6" sx={{ mt: 2 }}>
           Loading training session...
         </Typography>
@@ -368,648 +384,310 @@ function TrainingSession() {
   }
 
   return (
-    <Box sx={{ 
-      width: '100%', 
-      height: 'calc(100vh - 64px)', // Account for header
-      display: 'flex', 
-      flexDirection: 'column',
-      bgcolor: '#f8f9fa'
-    }}>
+    <Container maxWidth="lg" sx={{ mt: 2, mb: 4 }}>
       {/* Session Results Modal */}
-      {showSessionResults && sessionAnalysis && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            zIndex: 1300,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.3, delay: 0.2 }}
-            style={{ width: '90%', maxWidth: '800px', maxHeight: '90vh', overflow: 'auto' }}
+      <Dialog
+        open={showSessionResults && sessionAnalysis}
+        maxWidth="md"
+        fullWidth
+        onClose={() => setShowSessionResults(false)}
+      >
+        <DialogTitle sx={{ textAlign: 'center', bgcolor: 'primary.main', color: 'white' }}>
+          🎉 Training Session Complete!
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3, textAlign: 'center' }}>
+            Here's your session summary
+          </Typography>
+
+          <Box sx={{ textAlign: 'center', mb: 3 }}>
+            <Typography variant="h3" color="primary">
+              {sessionAnalysis?.totalMessages || 0}
+            </Typography>
+            <Typography variant="h6">Messages Exchanged</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Duration: {Math.floor(sessionDuration / 60)}m {sessionDuration % 60}s
+            </Typography>
+          </Box>
+
+          {sessionAnalysis?.summary && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" gutterBottom>📋 Session Summary</Typography>
+              <Typography variant="body1">{sessionAnalysis.summary}</Typography>
+            </Box>
+          )}
+
+          {sessionAnalysis?.suggestions && sessionAnalysis.suggestions.length > 0 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>🚀 Improvement Tips</Typography>
+              {sessionAnalysis.suggestions.map((suggestion, index) => (
+                <Box key={index} sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                  <Chip
+                    label={index + 1}
+                    size="small"
+                    color="primary"
+                    sx={{ mr: 2, mt: 0.5, minWidth: '24px' }}
+                  />
+                  <Typography variant="body1">{suggestion}</Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3, justifyContent: 'center', gap: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={() => navigate('/training-center')}
+            sx={{ borderColor: '#FFD100', color: '#FFD100', px: 4 }}
           >
-            <Card sx={{ p: 4, background: 'linear-gradient(135deg, #003DA5 0%, #002B5C 100%)', color: 'white' }}>
-              <Box sx={{ textAlign: 'center', mb: 4 }}>
-                <Typography variant="h3" sx={{ fontWeight: 700, color: '#FFD100', mb: 2 }}>
-                  🎉 Training Session Complete!
-                </Typography>
-                <Typography variant="h6" sx={{ opacity: 0.9 }}>
-                  Here's your personalized performance analysis
-                </Typography>
-              </Box>
+            Start New Training
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => navigate('/dashboard')}
+            sx={{ borderColor: '#FFD100', color: '#FFD100', px: 4 }}
+          >
+            Back to Dashboard
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-              <Grid container spacing={4} sx={{ mb: 4 }}>
-                <Grid item xs={12} md={4}>
-                  <Box sx={{ textAlign: 'center', p: 3, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 3 }}>
-                    <Typography variant="h1" sx={{ fontWeight: 700, color: '#FFD100', mb: 1 }}>
-                      {sessionAnalysis.overallScore}
-                    </Typography>
-                    <Typography variant="h6" sx={{ opacity: 0.9 }}>
-                      Empathy Score
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.7, mt: 1 }}>
-                      out of 10
-                    </Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <Box sx={{ textAlign: 'center', p: 3, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 3 }}>
-                    <Typography variant="h2" sx={{ fontWeight: 700, color: 'white', mb: 1 }}>
-                      {sessionAnalysis.totalMessages}
-                    </Typography>
-                    <Typography variant="h6" sx={{ opacity: 0.9 }}>
-                      Messages
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.7, mt: 1 }}>
-                      exchanged
-                    </Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <Box sx={{ textAlign: 'center', p: 3, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 3 }}>
-                    <Typography variant="h2" sx={{ fontWeight: 700, color: 'white', mb: 1 }}>
-                      {Math.floor(sessionDuration / 60)}m
-                    </Typography>
-                    <Typography variant="h6" sx={{ opacity: 0.9 }}>
-                      Duration
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.7, mt: 1 }}>
-                      training time
-                    </Typography>
-                  </Box>
-                </Grid>
-              </Grid>
-
-              {sessionAnalysis.summary && (
-                <Box sx={{ mb: 4, p: 3, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 3 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: '#FFD100' }}>
-                    📋 Session Summary
-                  </Typography>
-                  <Typography variant="body1" sx={{ lineHeight: 1.6 }}>
-                    {sessionAnalysis.summary}
-                  </Typography>
-                </Box>
-              )}
-
-              {sessionAnalysis.suggestions && sessionAnalysis.suggestions.length > 0 && (
-                <Box sx={{ mb: 4 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: '#FFD100' }}>
-                    🚀 Your Personalized Improvement Plan
-                  </Typography>
-                  <Grid container spacing={2}>
-                    {sessionAnalysis.suggestions.map((suggestion, index) => (
-                      <Grid item xs={12} key={index}>
-                        <Box 
-                          sx={{ 
-                            p: 3, 
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)', 
-                            borderRadius: 3,
-                            border: '1px solid rgba(255, 209, 0, 0.3)',
-                            transition: 'all 0.3s ease',
-                            '&:hover': {
-                              backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                              transform: 'translateY(-2px)',
-                            }
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                            <Box
-                              sx={{
-                                minWidth: 30,
-                                height: 30,
-                                borderRadius: '50%',
-                                backgroundColor: '#FFD100',
-                                color: '#003DA5',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontWeight: 700,
-                                fontSize: '0.9rem',
-                              }}
-                            >
-                              {index + 1}
-                            </Box>
-                            <Typography variant="body1" sx={{ color: 'white', lineHeight: 1.6 }}>
-                              {suggestion}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Box>
-              )}
-
-              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 4 }}>
-                <Button
-                  variant="outlined"
-                  size="large"
-                  onClick={() => navigate('/training-center')}
-                  sx={{
-                    borderColor: '#FFD100',
-                    color: '#FFD100',
-                    fontWeight: 600,
-                    px: 4,
-                    py: 1.5,
-                    '&:hover': {
-                      borderColor: '#FFD100',
-                      backgroundColor: 'rgba(255, 209, 0, 0.1)',
-                    },
-                  }}
-                >
-                  Start New Training
-                </Button>
-                <Button
-                  variant="outlined"
-                  size="large"
-                  onClick={() => navigate('/analytics')}
-                  sx={{
-                    borderColor: '#FFD100',
-                    color: '#FFD100',
-                    fontWeight: 600,
-                    px: 4,
-                    py: 1.5,
-                    '&:hover': {
-                      borderColor: '#FFD100',
-                      backgroundColor: 'rgba(255, 209, 0, 0.1)',
-                    },
-                  }}
-                >
-                  View Full Analytics
-                </Button>
-              </Box>
-            </Card>
-          </motion.div>
-        </motion.div>
-      )}
-
-      {/* Sticky Header - Always visible */}
-      <Box sx={{ 
-        flexShrink: 0, 
-        py: 2,
-        px: 2,
-        position: 'sticky',
-        top: 0,
-        backgroundColor: '#f8f9fa',
-        zIndex: 10,
-        borderBottom: '1px solid #e9ecef',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-      }}>
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', maxWidth: '1200px', mx: 'auto' }}>
+      {/* Header */}
+      <Paper elevation={1} sx={{ p: 2, mb: 2, bgcolor: 'background.paper' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <IconButton
               onClick={() => navigate('/training-center')}
-              sx={{ mr: 2, color: '#003DA5' }}
+              sx={{ mr: 2, color: 'primary.main' }}
             >
               <ArrowBackIcon />
             </IconButton>
-            
-            <Box sx={{ flexGrow: 1 }}>
-              <Typography
-                variant="h5"
-                sx={{
-                  fontWeight: 700,
-                  color: '#003DA5',
-                  fontSize: '1.25rem',
-                }}
-              >
-                Training Session: {scenarioInfo?.title || 'Customer Service Training'}
+            <Box>
+              <Typography variant="h5" component="h1">
+                {scenarioInfo?.title || 'Customer Service Training'}
               </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  color: '#6c757d',
-                  fontSize: '0.875rem',
-                }}
-              >
-                Scenario: {scenarioInfo?.description || 'Customer Service Excellence'} • 
-                Duration: {formatDuration(sessionDuration)}
+              <Typography variant="body2" color="text.secondary">
+                {scenarioInfo?.description || 'Customer Service Excellence'} •
+                Duration: {formatDuration(sessionDuration)} •
+                Status: {connectionStatus}
               </Typography>
             </Box>
-            
+          </Box>
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={handleEndSession}
+            sx={{ ml: 3 }}
+          >
+            <StopIcon sx={{ mr: 1 }} />
+            End Session
+          </Button>
+        </Box>
+      </Paper>
+
+      {/* Main Chat Area - Full Width */}
+      <Card sx={{ height: { xs: '70vh', md: '75vh' }, display: 'flex', flexDirection: 'column' }}>
+        {/* Chat Header */}
+        <Box sx={{ p: 2, bgcolor: 'grey.50', borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
+              <PersonIcon />
+            </Avatar>
+            <Box>
+              <Typography variant="subtitle1" fontWeight="bold">
+                Customer (AI Simulation)
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {scenarioInfo?.title || 'Customer Service Training'} Scenario
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Messages Area */}
+        <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2 }}>
+          {messages.map((message) => (
+            <motion.div
+              key={message.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Box sx={{
+                mb: 2,
+                display: 'flex',
+                justifyContent: message.sender === 'agent' ? 'flex-end' : 'flex-start'
+              }}>
+                <Paper
+                  elevation={1}
+                  sx={{
+                    p: 2,
+                    maxWidth: { xs: '85%', md: '70%' },
+                    bgcolor: message.sender === 'agent' ? 'primary.light' : 'grey.100',
+                    color: message.sender === 'agent' ? 'white' : 'text.primary',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 1 }}>
+                    {message.sender === 'agent' ? (
+                      <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+                        🙋‍♂️ Agent:
+                      </Typography>
+                    ) : (
+                      <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+                        👤 Customer:
+                      </Typography>
+                    )}
+                  </Box>
+
+                  {/* Emergency Fallback - Always Works */}
+                  <Typography variant="body1">
+                    {message && message.text
+                      ? (typeof message.text === 'string'
+                        ? message.text
+                        : JSON.stringify(message.text).replace(/[{}\"]/g, ''))
+                      : 'Empty message'
+                    }
+                  </Typography>
+
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+                    <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </Typography>
+                    {message.sender === 'customer' && message.emotion && (
+                      <Chip
+                        label={message.emotion}
+                        size="small"
+                        sx={{
+                          bgcolor: getEmotionColor(message.emotion),
+                          color: 'white',
+                          fontSize: '0.7rem',
+                        }}
+                      />
+                    )}
+                  </Box>
+                </Paper>
+              </Box>
+            </motion.div>
+          ))}
+
+          {/* Typing Indicator */}
+          {isTyping && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <CircularProgress size={20} sx={{ mr: 2 }} />
+              <Typography variant="body2" color="text.secondary">
+                Customer is typing...
+              </Typography>
+            </Box>
+          )}
+
+          <div ref={messagesEndRef} />
+        </Box>
+        {/* Input Area - With Scrollable Voice Component */}
+        {/* Input Area - Simplified Direct Send */}
+        <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+          {/* Voice Toggle */}
+          <Box sx={{
+            mb: 2,
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'stretch', sm: 'center' },
+            gap: 1
+          }}>
             <Button
-              variant="outlined"
-              startIcon={<StopIcon />}
-              onClick={handleEndSession}
+              variant={useVoiceInput ? "contained" : "outlined"}
+              onClick={() => setUseVoiceInput(!useVoiceInput)}
+              startIcon={useVoiceInput ? <MicIcon /> : <MicOffIcon />}
+              size="small"
               sx={{
-                borderColor: '#dc3545',
-                color: '#dc3545',
-                fontWeight: 600,
-                '&:hover': {
-                  borderColor: '#c82333',
-                  backgroundColor: 'rgba(220, 53, 69, 0.05)',
-                },
+                minWidth: { xs: '100%', sm: '140px' },
+                bgcolor: useVoiceInput ? 'primary.main' : 'transparent',
+                color: useVoiceInput ? 'white' : 'primary.main',
               }}
             >
-              End Session
+              {useVoiceInput ? 'Voice Mode' : 'Text Mode'}
             </Button>
+            <Typography variant="caption" color="text.secondary" sx={{
+              textAlign: { xs: 'center', sm: 'left' },
+              mt: { xs: 1, sm: 0 }
+            }}>
+              {useVoiceInput ? 'Speak to send message directly' : 'Type your message'}
+            </Typography>
           </Box>
-        </motion.div>
-      </Box>
 
-      {/* Main Chat Area */}
-      <Box sx={{ 
-        flexGrow: 1, 
-        display: 'flex',
-        maxWidth: '1200px',
-        mx: 'auto',
-        width: '100%',
-        p: 2,
-        gap: 2,
-        minHeight: 0 // Important for flex
-      }}>
-        {/* Chat Column */}
-        <Box sx={{ 
-          flex: '1 1 65%',
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 0
-        }}>
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-          >
-            <Card sx={{ 
-              height: '100%', 
-              display: 'flex', 
-              flexDirection: 'column',
-              minHeight: 0 // Important for flex
+          {/* Conditional Input - Only ONE at a time */}
+          {useVoiceInput ? (
+            // Voice Input Mode - Auto Send
+            <Box sx={{
+              border: '2px dashed #1976d2',
+              borderRadius: 2,
+              p: 3,
+              textAlign: 'center',
+              bgcolor: 'rgba(25, 118, 210, 0.05)',
+              maxHeight: '200px',
+              overflowY: 'auto',
             }}>
-              {/* Chat Header */}
-              <Box
-                sx={{
-                  p: 2,
-                  borderBottom: '1px solid #e9ecef',
-                  background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)',
-                  flexShrink: 0
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Avatar
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      backgroundColor: '#dc3545',
-                    }}
-                  >
-                    👤
-                  </Avatar>
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
-                      Customer (AI Simulation)
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: '#6c757d', fontSize: '0.8rem' }}>
-                      {scenarioInfo?.title || 'Customer Service Training'} Scenario
-                    </Typography>
-                  </Box>
+              <VoiceInput
+                onTranscriptSend={handleDirectVoiceSend}
+                placeholder="Click microphone and speak - message will send automatically"
+              />
+
+              {/* Loading indicator for voice */}
+              {isLoading && (
+                <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <CircularProgress size={20} sx={{ mr: 1 }} />
+                  <Typography variant="caption">Sending your message...</Typography>
                 </Box>
-              </Box>
-
-              {/* Messages Area - Simplified scrolling */}
-              <Box
-                sx={{
-                  flexGrow: 1,
-                  overflowY: 'auto',
-                  p: 2,
-                  backgroundColor: '#f8f9fa',
-                  minHeight: 0
-                }}
-              >
-                <AnimatePresence>
-                  {messages.map((message) => (
-                    <motion.div
-                      key={message.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                      style={{ marginBottom: 16 }}
-                    >
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          justifyContent: message.sender === 'agent' ? 'flex-end' : 'flex-start',
-                          mb: 2,
-                        }}
-                      >
-                        <Paper
-                          elevation={3}
-                          sx={{
-                            p: 2,
-                            maxWidth: '75%',
-                            minWidth: '200px',
-                            background: message.sender === 'agent' 
-                              ? '#003DA5' 
-                              : '#ffffff',
-                            color: message.sender === 'agent' ? '#ffffff' : '#343a40',
-                            borderRadius: message.sender === 'agent' 
-                              ? '20px 20px 4px 20px' 
-                              : '20px 20px 20px 4px',
-                            boxShadow: message.sender === 'agent' 
-                              ? '0 4px 12px rgba(0, 61, 165, 0.3)'
-                              : '0 2px 8px rgba(0, 0, 0, 0.1)',
-                            border: message.sender === 'agent' ? 'none' : '1px solid #e9ecef',
-                          }}
-                        >
-                          <Typography variant="body1" sx={{ mb: 1, fontWeight: 500 }}>
-                            {message.sender === 'agent' && '🙋‍♂️ Agent: '}
-                            {message.sender === 'customer' && '👤 Customer: '}
-                            {message.text}
-                          </Typography>
-                          
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Typography 
-                              variant="caption" 
-                              sx={{ 
-                                color: message.sender === 'agent' 
-                                  ? 'rgba(255, 255, 255, 0.7)' 
-                                  : '#6c757d',
-                              }}
-                            >
-                              {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </Typography>
-                            
-                            {message.sender === 'customer' && message.emotion && (
-                              <Chip
-                                label={message.emotion}
-                                size="small"
-                                sx={{
-                                  backgroundColor: getEmotionColor(message.emotion),
-                                  color: 'white',
-                                  fontSize: '0.7rem',
-                                  height: 20,
-                                }}
-                              />
-                            )}
-                          </Box>
-                        </Paper>
-                      </Box>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-
-                {/* Typing Indicator */}
-                {isTyping && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
-                      <Paper
-                        sx={{
-                          p: 2,
-                          backgroundColor: '#ffffff',
-                          borderRadius: '20px 20px 20px 4px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1,
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          {[1, 2, 3].map((dot) => (
-                            <Box
-                              key={dot}
-                              sx={{
-                                width: 8,
-                                height: 8,
-                                borderRadius: '50%',
-                                backgroundColor: '#6c757d',
-                                animation: `typingAnimation 1.4s infinite ease-in-out`,
-                                animationDelay: `${(dot - 1) * 0.16}s`,
-                                '@keyframes typingAnimation': {
-                                  '0%, 80%, 100%': {
-                                    transform: 'scale(0.8)',
-                                    opacity: 0.5,
-                                  },
-                                  '40%': {
-                                    transform: 'scale(1)',
-                                    opacity: 1,
-                                  },
-                                },
-                              }}
-                            />
-                          ))}
-                        </Box>
-                        <Typography variant="body2" sx={{ color: '#6c757d' }}>
-                          Customer is typing...
-                        </Typography>
-                      </Paper>
-                    </Box>
-                  </motion.div>
-                )}
-
-                <div ref={messagesEndRef} />
-              </Box>
-
-              {/* Message Input - Always visible */}
-              <Box sx={{ 
-                p: 2, 
-                borderTop: '1px solid #e9ecef',
-                backgroundColor: 'white',
-                flexShrink: 0
-              }}>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <TextField
-                    fullWidth
-                    multiline
-                    maxRows={3}
-                    placeholder="Type your empathetic response..."
-                    value={currentMessage}
-                    onChange={(e) => setCurrentMessage(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage();
-                      }
-                    }}
-                    disabled={isLoading}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: 3,
-                      },
-                    }}
-                  />
-                  <Button
-                    variant="contained"
-                    endIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
-                    onClick={handleSendMessage}
-                    disabled={!currentMessage.trim() || isLoading}
-                    sx={{
-                      background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
-                      borderRadius: 3,
-                      px: 3,
-                      color: 'white',
-                      fontWeight: 600,
-                      minWidth: '120px',
-                      '&:hover': {
-                        background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)',
-                        transform: 'translateY(-1px)',
-                        boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)',
-                      },
-                    }}
-                  >
-                    Send
-                  </Button>
-                </Box>
-              </Box>
-            </Card>
-          </motion.div>
-        </Box>
-
-        {/* Metrics Sidebar - Scrollable but doesn't affect chat */}
-        <Box sx={{ 
-          flex: '0 0 320px',
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 0
-        }}>
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-          >
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: 2, 
-              height: '100%',
-              overflowY: 'auto'
-            }}>
-              {/* Current Empathy Score */}
-              <Card sx={{ p: 3, flexShrink: 0 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                  <PsychologyIcon sx={{ color: '#003DA5' }} />
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    Empathy Score
-                  </Typography>
-                </Box>
-                
-                <Box sx={{ textAlign: 'center', mb: 2 }}>
-                  <Typography
-                    variant="h2"
-                    sx={{
-                      fontWeight: 700,
-                      color: getEmpathyScoreColor(empathyScore),
-                      mb: 1,
-                    }}
-                  >
-                    {empathyScore}%
-                  </Typography>
-                  <LinearProgress
-                    variant="determinate"
-                    value={empathyScore}
-                    sx={{
-                      height: 12,
-                      borderRadius: 6,
-                      backgroundColor: '#e9ecef',
-                      '& .MuiLinearProgress-bar': {
-                        background: `linear-gradient(90deg, ${getEmpathyScoreColor(empathyScore)} 0%, #FFD100 100%)`,
-                        borderRadius: 6,
-                      },
-                    }}
-                  />
-                </Box>
-
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                  <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="h6" sx={{ fontWeight: 600, color: '#003DA5' }}>
-                      {responseTime.toFixed(1)}s
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: '#6c757d' }}>
-                      Response Time
-                    </Typography>
-                  </Box>
-                  <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="h6" sx={{ fontWeight: 600, color: '#003DA5' }}>
-                      {messages.filter(m => m.sender === 'agent').length}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: '#6c757d' }}>
-                      Messages Sent
-                    </Typography>
-                  </Box>
-                </Box>
-              </Card>
-
-              {/* Performance Breakdown */}
-              <Card sx={{ p: 3, flexShrink: 0 }}>
-                <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
-                  Performance Breakdown
-                </Typography>
-
-                {Object.entries(metrics).map(([key, value]) => (
-                  <Box key={key} sx={{ mb: 3 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: '#003DA5' }}>
-                        {Math.round(value)}%
-                      </Typography>
-                    </Box>
-                    <LinearProgress
-                      variant="determinate"
-                      value={value}
-                      sx={{
-                        height: 6,
-                        borderRadius: 3,
-                        backgroundColor: '#e9ecef',
-                        '& .MuiLinearProgress-bar': {
-                          background: 'linear-gradient(90deg, #003DA5 0%, #FFD100 100%)',
-                          borderRadius: 3,
-                        },
-                      }}
-                    />
-                  </Box>
-                ))}
-              </Card>
-
-              {/* AI Feedback */}
-              {feedback && (
-                <Card sx={{ p: 3, flexShrink: 0 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                    <LightbulbIcon sx={{ color: '#FFD100' }} />
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                      AI Feedback
-                    </Typography>
-                  </Box>
-                  
-                  <Alert 
-                    severity={empathyScore >= 80 ? 'success' : empathyScore >= 60 ? 'warning' : 'error'}
-                    sx={{ 
-                      borderRadius: 2,
-                      '& .MuiAlert-message': {
-                        fontSize: '0.9rem',
-                      },
-                    }}
-                  >
-                    {feedback}
-                  </Alert>
-                </Card>
               )}
             </Box>
-          </motion.div>
+          ) : (
+            // Text Input Mode - Manual Send
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: 1
+            }}>
+              <TextField
+                fullWidth
+                multiline
+                maxRows={4}
+                value={currentMessage}
+                onChange={(e) => setCurrentMessage(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                disabled={isLoading}
+                placeholder="Type your response here..."
+                variant="outlined"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  }
+                }}
+              />
+
+              <Button
+                variant="contained"
+                onClick={handleSendMessage}
+                disabled={!currentMessage.trim() || isLoading}
+                startIcon={isLoading ? <CircularProgress size={20} /> : <SendIcon />}
+                sx={{
+                  minWidth: { xs: '100%', sm: '120px' },
+                  minHeight: '56px',
+                  borderRadius: 2,
+                }}
+              >
+                {isLoading ? 'Sending...' : 'Send'}
+              </Button>
+            </Box>
+          )}
         </Box>
-      </Box>
-    </Box>
+
+
+      </Card>
+    </Container>
   );
 }
 

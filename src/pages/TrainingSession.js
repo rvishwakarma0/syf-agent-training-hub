@@ -34,7 +34,7 @@ import VoiceInput from '../components/VoiceInput/VoiceInput';
 const apiService = {
   // Start Pod Session
   async startPod(scenarioData) {
-    const API_BASE_URL = 'http://localhost:8080/api';
+    const API_BASE_URL = 'http://3.82.22.210:8080/api';
 
     try {
       const tpodMapping = {
@@ -88,7 +88,7 @@ const apiService = {
 
   // Send Message
   async sendMessage(messageData) {
-    const API_BASE_URL = 'http://localhost:8080/api';
+    const API_BASE_URL = 'http://3.82.22.210:8080/api';
 
     try {
       const payload = {

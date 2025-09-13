@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // API Configuration - Update to your Spring Boot server
-const API_BASE_URL = 'http://localhost:8080/api'; // Change to your Spring Boot server URL
+const API_BASE_URL = 'http://3.82.22.210:8080/api'; // Change to your Spring Boot server URL
 
 // Create axios instance with default config
 const apiClient = axios.create({

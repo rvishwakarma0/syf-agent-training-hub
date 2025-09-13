@@ -6,6 +6,7 @@ export default function VoiceChat() {
 
   let chatHistory = "";
 
+
   window.addEventListener('message', (event) => {
     if (event.data?.type === 'chatHistory') {
       chatHistory = event.data.data;

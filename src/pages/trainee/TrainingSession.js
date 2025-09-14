@@ -31,8 +31,8 @@ import {
   Close as CloseIcon,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
-import { useApp } from '../context/AppContext';
-import VoiceInput from '../components/VoiceInput/VoiceInput';
+import { useApp } from '../../context/AppContext';
+import VoiceInput from '../../components/VoiceInput/VoiceInput';
 import ReactMarkdown from 'react-markdown';
 
 // Updated apiService for Spring Boot integration

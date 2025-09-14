@@ -21,7 +21,7 @@ import {
   Psychology as PsychologyIcon,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
-import { useApp } from '../context/AppContext';
+import { useApp } from '../../context/AppContext';
 
 function Welcome() {
   const navigate = useNavigate();

@@ -1,7 +1,6 @@
 // context/UserContext.js - ENHANCED VERSION
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { getUserBySsoId } from '../util/users-data';
+import { useNavigate } from 'react-router-dom';
 
 const UserContext = createContext();
 
@@ -17,7 +16,6 @@ export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const location = useLocation();
 
   // Initialize user from localStorage (NO URL params)
   useEffect(() => {
@@ -26,10 +24,6 @@ export const UserProvider = ({ children }) => {
         const savedUser = localStorage.getItem('user');
         if (savedUser) {
           const userData = JSON.parse(savedUser);
-          // Map trainer -> admin for role consistency
-          if (userData.role === 'trainer') {
-            userData.role = 'admin';
-          }
           setUser({
             ...userData,
             isAuthenticated: true
@@ -46,15 +40,12 @@ export const UserProvider = ({ children }) => {
   }, []);
 
   const login = (userData) => {
-    try {
-      // Map trainer -> admin for consistent role-based access
-      const role = userData.role === 'trainer' ? 'admin' : userData.role;
-      
+    try {      
       const authenticatedUser = {
         id: userData['sso-id'] || userData.id,
         name: userData.name,
         email: userData.email || `${userData.name.toLowerCase().replace(' ', '.')}@synchrony.com`,
-        role: role,
+        role: userData.role,
         isAuthenticated: true
       };
       
@@ -62,10 +53,10 @@ export const UserProvider = ({ children }) => {
       localStorage.setItem('user', JSON.stringify(authenticatedUser));
       
       // ✅ Navigate based on role - this was missing!
-      if (role === 'admin') {
-        navigate('/welcome', { replace: true });
+      if (userData.role === 'admin') {
+        navigate('/dashboard', { replace: true });
       } else {
-        navigate('/profile', { replace: true }); // Trainees go to chat
+        navigate('/welcome', { replace: true });  
       }
       
       return { success: true };

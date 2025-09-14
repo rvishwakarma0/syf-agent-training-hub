@@ -18,7 +18,7 @@ import {
 
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import apiService from '../services/apiService';
+import apiService from '../../services/apiService';
 
 const scenarios = [
   {

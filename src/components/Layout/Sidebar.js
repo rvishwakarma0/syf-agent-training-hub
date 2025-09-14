@@ -31,23 +31,15 @@ const DRAWER_WIDTH = 280;
 const menuConfig = {
   admin: [
     { path: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
-    { path: '/chat', label: 'Synchrony Chat', icon: ChatIcon }, // ✅ Updated
     { path: '/analytics', label: 'Analytics', icon: AnalyticsIcon },
     { path: '/prompts', label: 'Prompts', icon: PromptIcon },
     { path: '/tpods', label: 'Training Pods', icon: TpodIcon },
     { path: '/profile', label: 'Profile', icon: ProfileIcon },
-    { path: '/training-center', label: 'Training Center', icon: SchoolIcon },
-    { path: '/performance', label: 'Performance', icon: TrendingUpIcon }
   ],
   trainee: [
-    { path: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
-    { path: '/chat', label: 'Synchrony Chat', icon: ChatIcon }, // ✅ Updated
-    { path: '/profile', label: 'Profile', icon: ProfileIcon },
+    { path: '/welcome', label: 'Welcome', icon: DashboardIcon },
     { path: '/training-center', label: 'Training Center', icon: SchoolIcon },
     { path: '/performance', label: 'Performance', icon: TrendingUpIcon },
-  ],
-  user: [
-    { path: '/chat', label: 'Synchrony Chat', icon: ChatIcon }, // ✅ Updated
     { path: '/profile', label: 'Profile', icon: ProfileIcon },
   ]
 };

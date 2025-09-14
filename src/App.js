@@ -1,5 +1,4 @@
 // App.js - COMPLETE REPLACEMENT
-import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Box } from '@mui/material';
 
@@ -10,14 +9,12 @@ import ProtectedRoute from './components/Layout/ProtectedRoute';
 
 // Pages
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import AgentProfile from './pages/AgentProfile';
-import TrainingSession from './pages/TrainingSession';
-import Chat from './pages/Chat';
 import Profile from './pages/Profile';
-import TrainingCenter from './pages/TrainingCenter';
-import Analytics from './pages/Analytics';
-import Welcome from './pages/Welcome';
+import Analytics from './pages/admin/Analytics';
+import Dashboard from './pages/admin/Dashboard';
+import Welcome from './pages/trainee/Welcome';
+import TrainingCenter from './pages/trainee/TrainingCenter';
+import TrainingSession from './pages/trainee/TrainingSession';
 
 // Admin Components
 import PromptList from './components/Prompt/PromptList';
@@ -32,7 +29,6 @@ import { AppProvider } from './context/AppContext';
 import { UserProvider } from './context/UserContext';
 
 
-import VoiceInputDemo from './components/VoiceInput/VoiceInputDemo';
 
 
 import VoiceChat from './components/voiceChat/VoiceChat';
@@ -41,13 +37,9 @@ import VoiceChat from './components/voiceChat/VoiceChat';
 import { ROLES } from './util/roles';
 // Styles
 import './App.css';
+import Performance from './pages/trainee/Performace';
 
-const Performance = () => (
-  <Box sx={{ p: 3 }}>
-    <h2>Performance Dashboard</h2>
-    <p>Performance metrics coming soon...</p>
-  </Box>
-);
+
 
 // Layout wrapper component for protected routes
 const AppLayout = ({ children }) => (
@@ -78,16 +70,17 @@ function App() {
           <Route path="/login" element={<Login />} />
 
           {/* Protected Routes - With layout */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute requiredRoles={[ROLES.ADMIN ,  ROLES.TRAINEE]}>
+          
+          <Route path="/profile" element={
+            <ProtectedRoute requiredRoles={[ROLES.ADMIN, ROLES.TRAINEE]}>
               <AppLayout>
-                <Dashboard />
+                <Profile />
               </AppLayout>
             </ProtectedRoute>
           } />
 
           <Route path="/welcome" element={
-            <ProtectedRoute requiredRoles={[ROLES.ADMIN , ROLES.TRAINEE]}>
+            <ProtectedRoute requiredRoles={[ROLES.TRAINEE]}>
               <AppLayout>
                 <Welcome />
               </AppLayout>
@@ -95,16 +88,8 @@ function App() {
           } />
 
 
-          <Route path="/chat" element={
-            <ProtectedRoute requiredRoles={[ROLES.ADMIN, ROLES.TRAINEE, ROLES.USER]}>
-              <AppLayout>
-                <Chat />
-              </AppLayout>
-            </ProtectedRoute>
-          } />
-
           <Route path="/training-center" element={
-            <ProtectedRoute requiredRoles={[ROLES.ADMIN, ROLES.TRAINEE]}>
+            <ProtectedRoute requiredRoles={[ROLES.TRAINEE]}>
               <AppLayout>
                 <TrainingCenter />
               </AppLayout>
@@ -112,7 +97,7 @@ function App() {
           } />
 
           <Route path="/training/:sessionId" element={
-            <ProtectedRoute requiredRoles={[ROLES.ADMIN, ROLES.TRAINEE]}>
+            <ProtectedRoute requiredRoles={[ROLES.TRAINEE]}>
               <AppLayout>
                 <TrainingSession />
               </AppLayout>
@@ -120,17 +105,25 @@ function App() {
           } />
 
           <Route path="/performance" element={
-            <ProtectedRoute requiredRoles={[ROLES.ADMIN, ROLES.TRAINEE]}>
+            <ProtectedRoute requiredRoles={[ROLES.TRAINEE]}>
               <AppLayout>
                 <Performance />
               </AppLayout>
             </ProtectedRoute>
           } />
 
-          <Route path="/profile" element={
-            <ProtectedRoute requiredRoles={[ROLES.ADMIN, ROLES.TRAINEE, ROLES.USER]}>
+          <Route path="/voice-chat" element={
+            <ProtectedRoute requiredRoles={[ ROLES.TRAINEE]}>
               <AppLayout>
-                <Profile />
+                <VoiceChat />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/dashboard" element={
+            <ProtectedRoute requiredRoles={[ROLES.ADMIN]}>
+              <AppLayout>
+                <Dashboard />
               </AppLayout>
             </ProtectedRoute>
           } />
@@ -151,13 +144,7 @@ function App() {
             </ProtectedRoute>
           } />
 
-          <Route path="/voice-chat" element={
-            <ProtectedRoute requiredRoles={[ ROLES.TRAINEE, ROLES.USER]}>
-              <AppLayout>
-                <VoiceChat />
-              </AppLayout>
-            </ProtectedRoute>
-          } />
+          
 
           <Route path="/prompts/create" element={
             <ProtectedRoute requiredRoles={[ROLES.ADMIN]}>
@@ -219,11 +206,11 @@ function App() {
               {/* <Route path="/voice-chat" element={<VoiceChat />} /> */}
               {/* Default Redirects */}
               <Route path="/" element={<Navigate to="/login" replace />} />
-              <Route path="*" element={<Navigate to="/login" replace />} />
+              {/* <Route path="*" element={<Navigate to="/login" replace />} /> */}
             </Routes>
       </AppProvider>
     </UserProvider>
   );
 }
-
+ 
 export default App;

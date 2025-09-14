@@ -4,7 +4,7 @@ import { API_BASE_URL } from '../urlConfig';
 // Create axios instance with default config
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000,
+  timeout: 2000000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -86,12 +86,12 @@ export const apiService = {
     }
   },
   
-  async sendMessage({ sessionId, message }) {
+  async sendMessage({ sessionId, message, tpodId }) {
     try {
-      const response = await apiClient.post('/api/chat/send', {
+      const response = await apiClient.post('/api/chat/message', {
         sessionId,
         message,
-        timestamp: new Date().toISOString(),
+        tpodId,
       });
 
       return {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -20,206 +20,88 @@ import {
   Mic as MicIcon,
   MicOff as MicOffIcon,
   Person as PersonIcon,
-  Help as HelpIcon,
-  Feedback as FeedbackIcon,
-  Close as CloseIcon,
 } from '@mui/icons-material';
+import { nanoid } from 'nanoid';
+
 import { motion } from 'framer-motion';
-import { useApp } from '../../context/AppContext';
 import VoiceInput from '../../components/VoiceInput/VoiceInput';
-import { SEND_MSG_CHAT_URL, START_POD_CHAT_URL } from '../../urlConfig';
+import apiService from '../../services/apiService';
 import TpOdService from '../../services/TpOdService';
-
-// Updated apiService for Spring Boot integration
-const apiService = {
-  // Start Pod Session
-  async startPod(tpodId, userId) {
-    try {
-      const payload = {
-        tpodId: tpodId,
-        userId: userId,
-      };
-
-      console.log('🚀 Starting Spring Boot pod session:', payload);
-
-      const response = await fetch(`${START_POD_CHAT_URL}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('✅ Pod session started:', data);
-
-      return {
-        success: true,
-        data: {
-          sessionId: data.sessionId,
-          message: data.message,
-          timestamp: data.timestamp,
-        },
-      };
-    } catch (error) {
-      console.error('❌ Start pod session failed:', error);
-      return {
-        success: false,
-        error: error.message,
-        fallback: true,
-      };
-    }
-  },
-
-  // Send Message
-  async sendMessage(messageData) {
-    try {
-      const payload = {
-        sessionId: messageData.sessionId,
-        tpodId: messageData.tpodId,
-        message: messageData.message,
-      };
-
-      console.log('💬 Sending message to Spring Boot:', payload);
-
-      const response = await fetch(`${SEND_MSG_CHAT_URL}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('✅ Message response received:', data);
-
-      return {
-        success: true,
-        data: {
-          sessionId: data.sessionId,
-          aiResponse: typeof data.message === 'string'
-            ? data.message
-            : JSON.stringify(data.message),
-          feedback: data.evalMsg,
-          timestamp: data.timestamp,
-        },
-      };
-    } catch (error) {
-      console.error('❌ Send message failed:', error);
-      return {
-        success: false,
-        error: error.message,
-        fallback: true,
-      };
-    }
-  },
-
-}
 
 const TextTraining = () => {
   const { tpodId } = useParams();
   const navigate = useNavigate();
-  const { state, actions } = useApp();
   const messagesEndRef = useRef(null);
+  const userId = JSON.parse(localStorage.getItem('user'))?.id;
 
   // State management
   const [messages, setMessages] = useState([]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [currentSessionId, setCurrentSessionId] = useState(null);
-  const [currentTpodId, setCurrentTpodId] = useState(tpodId);
   const [isTyping, setIsTyping] = useState(false);
-  const [sessionDuration, setSessionDuration] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [scenarioInfo, setScenarioInfo] = useState(null);
-  const [showSessionResults, setShowSessionResults] = useState(false);
-  const [sessionAnalysis, setSessionAnalysis] = useState(null);
   const [useVoiceInput, setUseVoiceInput] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
-  const [isGettingFeedback, setIsGettingFeedback] = useState(false);
-  const [feedbackType, setFeedbackType] = useState(null);
-  const [feedbackDialog, setFeedbackDialog] = useState({
-    open: false,
-    title: '',
-    content: '',
-  });
+
+  const hasInitialized = useRef(false);
   const [tpod, settpod] = useState({});
 
   // Initialize session
-  useEffect(() => {
+useEffect(() => {
+  if (hasInitialized.current) return; // Prevent double execution
+  hasInitialized.current = true;
+  const initializeSession = async () => {
+    setIsLoading(true);
+    setConnectionStatus("connecting");
 
-    const initializeSession = async () => {
-      setIsLoading(true);
-      setConnectionStatus('connecting');
-      const Ttpod = await TpOdService.getTpOdById(tpodId);
-      settpod(Ttpod);
+    try {
+      // ✅ Run both APIs in parallel
+      const [tpodData, podResponse] = await Promise.all([
+        TpOdService.getTpOdById(tpodId),
+        apiService.startPod({ tpodId, userId }),
+      ]);
 
+      // ✅ Set tpod data
+      settpod(tpodData);
+
+      // ✅ Build chat messages
       const msgs = [];
-      msgs.push({
-        id: 1,
-        sender: 'agent',
-        text: tpod.firstMessage,
-        timestamp: new Date(),
-      });
+      if (tpodData?.firstMessage) {
+        msgs.push({
+          id: nanoid(5),
+          sender: "agent",
+          text: tpodData.firstMessage,
+          timestamp: new Date(),
+        });
+      }
 
-
-      const userId = JSON.parse(localStorage.getItem('user'))?.id;
-
-      try {
-
-        const response = await apiService.startPod({
-          tpodId: tpodId,
-          userId: userId,
+      if (podResponse?.success) {
+        msgs.push({
+          id: nanoid(5),
+          sender: "customer",
+          text: podResponse.data.message,
+          timestamp: podResponse.data.timestamp,
         });
 
-        if (response && response.success) {
-          const initialMessage = {
-            id: 1,
-            sender: 'customer',
-            text: response.data.message,
-            timestamp: new Date(),
-          };
-
-          msgs.push(initialMessage);
-
-          setMessages(msgs);
-          setCurrentSessionId(response.data.sessionId);
-          setConnectionStatus('connected');
-
-          console.log('✅ Session initialized:', response.data.sessionId);
-        } else {
-          throw new Error('Failed to start pod session');
-        }
-      } catch (error) {
-        console.error('❌ Failed to initialize session:', error);
-        setConnectionStatus('error');
-
-        // Fallback message
-        const fallbackMessage = {
-
-        };
-        setMessages([fallbackMessage]);
-      } finally {
-        setIsLoading(false);
+        setMessages(msgs);
+        setCurrentSessionId(podResponse.data.sessionId);
+        setConnectionStatus("connected");
+      } else {
+        throw new Error("Failed to start pod session");
       }
-    };
+    } catch (error) {
+      console.error("❌ Failed to initialize session:", error);
+      setConnectionStatus("error");
+      setMessages([
+        { id: nanoid(5), sender: "system", text: "Failed to load session" },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    initializeSession();
-
-    // Start session timer
-    const timer = setInterval(() => {
-      setSessionDuration(prev => prev + 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
+  initializeSession();
+}, []); // 👈 only runs once on mount
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -240,16 +122,6 @@ const TextTraining = () => {
     }
   };
 
-  // Handle voice message - populate text field without auto-sending
-  const handleVoiceMessage = (transcript) => {
-    const safeTranscript = String(transcript || '').trim();
-    console.log('🎤 Voice transcript:', safeTranscript, 'Type:', typeof safeTranscript);
-
-    if (safeTranscript) {
-      setCurrentMessage(safeTranscript);
-    }
-  };
-
   // Direct voice send - no review needed
   const handleDirectVoiceSend = (transcript) => {
     const safeTranscript = String(transcript || '').trim();
@@ -261,20 +133,24 @@ const TextTraining = () => {
 
   // Send message to Spring Boot API
   const handleSendMessage = async (messageOverride = null) => {
-    const messageToSend = messageOverride || currentMessage || '';
+    let messageToSend;
+    if(typeof messageOverride == "string") {
+      messageToSend = messageOverride;
+    }else{
+      messageToSend = currentMessage;
+    }
     const trimmedMessage = String(messageToSend).trim();
-
+    console.log('➡️ Sending message:', trimmedMessage);
     if (!trimmedMessage || isLoading) return;
 
     setIsLoading(true);
     setIsTyping(true);
 
-
     const userMessage = {
-      id: Date.now(),
+      id: nanoid(5),
       sender: 'agent',
       text: String(trimmedMessage),
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
 
     console.log('✅ User message created:', userMessage);
@@ -284,42 +160,20 @@ const TextTraining = () => {
     try {
       const response = await apiService.sendMessage({
         sessionId: currentSessionId,
-        tpodId: currentTpodId,
+        tpodId: tpodId,
         message: trimmedMessage,
       });
 
       if (response && response.success) {
-        setTimeout(() => {
           const aiMessage = {
-            id: Date.now() + 1,
+            id: nanoid(5),
             sender: 'customer',
-            text: String(response.data.aiResponse || 'Thank you for your response.'),
-            timestamp: new Date(),
-            emotion: 'neutral',
-          };
-
-          console.log('✅ AI message created:', aiMessage);
-          setMessages(prev => [...prev, aiMessage]);
-          setIsTyping(false);
-        }, 1000);
-      } else {
-        // Fallback response
-        const fallbackResponses = [
-          "",
-        ];
-
-        setTimeout(() => {
-          const aiMessage = {
-            id: Date.now() + 1,
-            sender: 'customer',
-            text: fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)],
-            timestamp: new Date(),
-            emotion: 'neutral',
+            text: String(response.data.message),
+            timestamp: response.data.timestamp,
           };
           setMessages(prev => [...prev, aiMessage]);
           setIsTyping(false);
-        }, 90000);
-      }
+      } 
     } catch (error) {
       console.error('❌ Failed to send message:', error);
       setIsTyping(false);
@@ -331,18 +185,8 @@ const TextTraining = () => {
 
   // Handle end session
   const handleEndSession = () => {
-    navigate('/training-center');
     // TODO HELP AND FEEDBACK COMPONENT 
 
-  };
-
-  // Close feedback dialog
-  const closeFeedbackDialog = () => {
-    setFeedbackDialog({
-      open: false,
-      title: '',
-      content: '',
-    });
   };
 
   // Loading state
@@ -375,7 +219,6 @@ const TextTraining = () => {
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 {tpod?.summary} •
-                Duration: {formatDuration(sessionDuration)} •
                 Status: {connectionStatus}
               </Typography>
             </Box>
@@ -470,7 +313,7 @@ const TextTraining = () => {
 
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
                     <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {message.timestamp}
                     </Typography>
                   </Box>
                 </Paper>

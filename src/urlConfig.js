@@ -10,3 +10,6 @@ export const PROMPT_API_BASE_URL = API_BASE_URL + "/api/prompts";
 
 //TPOD Service
 export const TPOD_API_BASE_URL = API_BASE_URL + "/admin/api/tpods";
+
+// Voice Training UI MFE
+export const VOICE_TRAINING_MFE_URL = "https://syf-voice-stream.vercel.app";

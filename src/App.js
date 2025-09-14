@@ -14,7 +14,6 @@ import Analytics from './pages/admin/Analytics';
 import Dashboard from './pages/admin/Dashboard';
 import Welcome from './pages/trainee/Welcome';
 import TrainingCenter from './pages/trainee/TrainingCenter';
-import TrainingSession from './pages/trainee/TrainingSession';
 
 // Admin Components
 import PromptList from './components/Prompt/PromptList';
@@ -31,13 +30,14 @@ import { UserProvider } from './context/UserContext';
 
 
 
-import VoiceChat from './components/voiceChat/VoiceChat';
 
 // Utils
 import { ROLES } from './util/roles';
 // Styles
 import './App.css';
 import Performance from './pages/trainee/Performace';
+import VoiceTraining from './pages/trainee/VoiceTraining';
+import TextTraining from './pages/trainee/TextTraining';
 
 
 
@@ -96,10 +96,10 @@ function App() {
             </ProtectedRoute>
           } />
 
-          <Route path="/training/:sessionId" element={
+          <Route path="/text-training/:tpodId" element={
             <ProtectedRoute requiredRoles={[ROLES.TRAINEE]}>
               <AppLayout>
-                <TrainingSession />
+                <TextTraining />
               </AppLayout>
             </ProtectedRoute>
           } />
@@ -112,10 +112,10 @@ function App() {
             </ProtectedRoute>
           } />
 
-          <Route path="/voice-chat" element={
+          <Route path="/voice-training/:tpodId" element={
             <ProtectedRoute requiredRoles={[ ROLES.TRAINEE]}>
               <AppLayout>
-                <VoiceChat />
+                <VoiceTraining />
               </AppLayout>
             </ProtectedRoute>
           } />

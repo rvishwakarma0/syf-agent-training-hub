@@ -7,113 +7,91 @@ import {
   Typography,
   Button,
   Chip,
-  Container,
-  Alert
+  Container
 } from '@mui/material';
-
-import {
-  Chat as ChatIcon,
-  Mic as MicIcon,
-} from '@mui/icons-material';
 
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import apiService from '../../services/apiService';
 
-const scenarios = [
-  {
-    id: 'customer-service',
-    title: 'Customer Service Excellence',
-    description: 'Practice handling customer complaints with empathy and professionalism',
-    difficulty: 'Beginner',
-    duration: '15 mins',
-    category: 'Customer Support',
-    color: '#4CAF50'
-  },
-  {
-    id: 'sales-conversation',
-    title: 'Sales Conversation',
-    description: 'Learn to build rapport and close deals effectively',
-    difficulty: 'Intermediate',
-    duration: '20 mins',
-    category: 'Sales',
-    color: '#2196F3'
-  },
-  {
-    id: 'difficult-customer',
-    title: 'Difficult Customer Handling',
-    description: 'De-escalate tense situations with angry customers',
-    difficulty: 'Advanced',
-    duration: '25 mins',
-    category: 'Customer Support',
-    color: '#FF9800'
-  },
-  {
-    id: 'loan-consultation',
-    title: 'Loan Consultation',
-    description: 'Guide customers through loan application process',
-    difficulty: 'Intermediate',
-    duration: '30 mins',
-    category: 'Banking',
-    color: '#9C27B0'
-  }
-];
+import TpOdService from '../../services/TpOdService';
 
 const TrainingCenter = () => {
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [apiStatus, setApiStatus] = useState(null);
+  const [tpodList, setTpodList] = useState([]);
 
-  const categories = ['All', 'Customer Support', 'Sales', 'Banking'];
+  // Categories – “All” + unique tags from API
+  const [categories, setCategories] = useState(['All']);
 
-  const filteredScenarios = selectedCategory === 'All'
-    ? scenarios
-    : scenarios.filter(scenario => scenario.category === selectedCategory);
-
-  // Update the useEffect in TrainingCenter.js
   useEffect(() => {
-    const testApi = async () => {
-      console.log('🧪 Testing Spring Boot API connectivity...');
+    const fetchScenarios = async () => {
       try {
-        const response = await apiService.healthCheck();
+        const response = await TpOdService.getAllTpOds();
+        const data = Array.isArray(response) ? response : response.data;
 
-        setApiStatus({
-          success: response.success,
-          message: response.success ?
-            '✅ Spring Boot API is working!' :
-            '⚠️ Spring Boot API connection issue'
-        });
+        // Normalize API → UI structure
+        const formatted = data.map(item => ({
+          id: item.id,
+          title: item.name,                        // API name → title
+          description: item.summary,               // API summary → description
+          difficulty: formatDifficulty(item.difficulty),
+          duration: item.duration || "5 min",      // fallback
+          category: item.tags?.[0] || "General",   // take first tag or fallback
+          color: pickCategoryColor(item.tags?.[0]) // assign color
+        }));
+
+        setTpodList(formatted);
+
+        // Extract unique categories for filter
+        const uniqueCats = [
+          ...new Set(formatted.map(item => item.category))
+        ];
+        setCategories(['All', ...uniqueCats]);
+
       } catch (error) {
-        console.log('❌ Spring Boot API Test Error:', error.message);
-        setApiStatus({
-          success: false,
-          error: error.message,
-          message: 'Spring Boot API not accessible - using fallback responses'
-        });
+        console.error("Error fetching scenarios:", error);
+        setTpodList([]);
+        setCategories(['All']);
       }
     };
 
-    testApi();
+    fetchScenarios();
   }, []);
 
+  // filter scenarios based on selected category
+  const filteredScenarios =
+    selectedCategory === 'All'
+      ? tpodList
+      : tpodList.filter(scenario => scenario.category === selectedCategory);
 
-  const handleStartTraining = (scenarioId) => {
-    // Navigate to training session with the scenario ID
-    navigate(`/training/${scenarioId}`);
+  // Navigate functions
+  const handleStartTextTraining = (scenarioId) => {
+    navigate(`/text-training/${scenarioId}`);
   };
 
-  // Add this function alongside your existing handleStartTraining function
-  const handleStartVoiceChat = (scenarioId) => {
-    // Navigate to voice training session
-    navigate(`/voice-chat/${scenarioId}`);
+  const handleStartVoiceTraining = (scenarioId) => {
+    navigate(`/voice-training/${scenarioId}`);
   };
 
-  // Update existing function name for clarity (optional)
-  // const handleStartTraining = (scenarioId) => {
-  //   // Navigate to text chat training session
-  //   navigate(`/training/${scenarioId}`);
-  // };
+  // Helpers
+  const formatDifficulty = (difficulty = '') => {
+    switch (difficulty.toLowerCase()) {
+      case "beginner": return "Beginner";
+      case "intermediate": return "Intermediate";
+      case "medium": return "Intermediate"; // API returns medium
+      case "advanced": return "Advanced";
+      default: return "Unknown";
+    }
+  };
 
+  const pickCategoryColor = (category = '') => {
+    switch (category.toLowerCase()) {
+      case 'sales': return '#2196F3';
+      case 'banking': return '#4CAF50';
+      case 'customer support': return '#FF9800';
+      default: return '#9C27B0'; // fallback purple
+    }
+  };
 
   const getDifficultyColor = (difficulty) => {
     switch (difficulty) {
@@ -139,19 +117,6 @@ const TrainingCenter = () => {
           <Typography variant="subtitle1" color="text.secondary" sx={{ fontSize: '1rem' }}>
             Choose a scenario to start your empathy training
           </Typography>
-
-          {/* API Status Alert */}
-          {apiStatus && (
-            <Alert
-              severity={apiStatus.success ? 'success' : 'warning'}
-              sx={{ mt: 2, mb: 2 }}
-            >
-              {apiStatus.success
-                ? `✅ AWS Lambda APIs are accessible! (Status: ${apiStatus.status}) - ${apiStatus.message}`
-                : `⚠️ ${apiStatus.message || apiStatus.error}. Demo will use intelligent fallback responses.`
-              }
-            </Alert>
-          )}
         </Box>
 
         {/* Category Filter */}
@@ -244,10 +209,9 @@ const TrainingCenter = () => {
 
                     {/* Action Buttons - Chat & Voice */}
                     <Box sx={{ display: 'flex', gap: 1 }}>
-                      {/* Chat Button */}
                       <Button
                         variant="contained"
-                        onClick={() => handleStartTraining(scenario.id)}
+                        onClick={() => handleStartTextTraining(scenario.id)}
                         sx={{
                           flex: 1,
                           backgroundColor: scenario.color,
@@ -263,10 +227,9 @@ const TrainingCenter = () => {
                         Chat
                       </Button>
 
-                      {/* Voice Button */}
                       <Button
                         variant="outlined"
-                        onClick={() => handleStartVoiceChat(scenario.id)}
+                        onClick={() => handleStartVoiceTraining(scenario.id)}
                         sx={{
                           flex: 1,
                           borderColor: scenario.color,
@@ -284,7 +247,6 @@ const TrainingCenter = () => {
                         Voice
                       </Button>
                     </Box>
-
                   </CardContent>
                 </Card>
               </motion.div>

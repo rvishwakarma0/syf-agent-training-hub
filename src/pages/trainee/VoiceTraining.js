@@ -2,10 +2,13 @@ import { Button } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { VOICE_TRAINING_MFE_URL } from '../../urlConfig';
+import Feedback from '../../components/Feedback/Feedback';
 
 export default function VoiceTraining() {
   const { tpodId } = useParams();   // ✅ get tpodId from route
   const [chatHistory, setChatHistory] = useState("");
+  const [feedback, setFeedback] = useState(false);
+  const [session, setSession] = useState(false);
 
   useEffect(() => {
     const handleMessage = (event) => {
@@ -19,11 +22,13 @@ export default function VoiceTraining() {
   }, []);
 
   const endSession = () => {
+    setSession(false);
     console.log("chatHistory", chatHistory);
     // in this method you  can call you feedback API with chatHistory and display in modal then close the iframe or navigate user to some training center
   };
 
   const getFeedback = () => {
+    setFeedback(true);
     console.log("chatHistory", chatHistory);
     // in this method you can call your feedback API with chatHistory and display feedback to user in a modal
   };
@@ -71,6 +76,8 @@ export default function VoiceTraining() {
           allow="microphone; autoplay"
         />
       </div>
+
+      <Feedback conversationMessages={chatHistory} onClose={()=> setFeedback(false)} open={feedback}/>
     </>
   );
 }

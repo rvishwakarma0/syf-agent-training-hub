@@ -64,6 +64,46 @@ export const apiService = {
       };
     }
   },
+  async startPod({ tpodId, userId }) {
+    try {
+      const response = await apiClient.post('/api/chat/start-pod', {
+        tpodId,
+        userId,
+      });
+
+      return {
+        success: true,
+        data: response.data,
+        status: response.status,
+      };
+    } catch (error) {
+      console.error('❌ Start Pod failed:', error);
+      return {
+        success: false,
+        error: error.message,
+        data: null,
+      };
+    }
+  },
+  
+  async sendMessage({ sessionId, message }) {
+    try {
+      const response = await apiClient.post('/api/chat/send', {
+        sessionId,
+        message,
+        timestamp: new Date().toISOString(),
+      });
+
+      return {
+        success: true,
+        data: response.data,
+        status: response.status,
+      };
+    } catch (error) {
+      console.error('❌ Send Message failed:', error);
+      throw error;
+    }
+  },
 };
 
 export default apiService;

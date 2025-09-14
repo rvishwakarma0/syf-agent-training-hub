@@ -12,14 +12,19 @@ import {
   Alert,
   Divider,
   MenuItem,
+  Autocomplete,
+  Chip,
+  InputAdornment,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
   Save as SaveIcon,
+  AutoFixHigh as AutoFillIcon,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
 import TpOdService from '../../services/TpOdService';
+import PromptService from '../../services/PromptService'; // ✅ Using your proper service
 
 function TpOdForm() {
   const { id } = useParams();
@@ -39,12 +44,49 @@ function TpOdForm() {
   const [tags, setTags] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  
+  // Prompt-related state
+  const [allPrompts, setAllPrompts] = useState([]);
+  const [promptsLoading, setPromptsLoading] = useState(false);
+  const [selectedPrompt, setSelectedPrompt] = useState(null);
+  const [promptsError, setPromptsError] = useState(null);
 
   useEffect(() => {
     if (isEditing) {
       fetchTpod();
     }
+    loadAllPrompts();
   }, [id, isEditing]);
+
+  const loadAllPrompts = async () => {
+    setPromptsLoading(true);
+    setPromptsError(null);
+    
+    try {
+      console.log('🔄 Loading prompts...');
+      const response = await PromptService.getAllPrompts(); // ✅ Using your service
+      
+      if (response.success && response.data) {
+        setAllPrompts(response.data);
+        console.log('✅ Loaded prompts:', response.data.length);
+        
+        // Show success notification
+        actions.addNotification({
+          type: 'info',
+          title: 'Prompts Loaded',
+          message: `Loaded ${response.data.length} prompts from library`,
+        });
+      } else {
+        setPromptsError(response.error || 'Failed to load prompts');
+        console.error('❌ Failed to load prompts:', response.error);
+      }
+    } catch (error) {
+      setPromptsError('Error connecting to prompt service');
+      console.error('❌ Error loading prompts:', error);
+    } finally {
+      setPromptsLoading(false);
+    }
+  };
 
   const fetchTpod = async () => {
     setLoading(true);
@@ -75,6 +117,60 @@ function TpOdForm() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Smart auto-fill logic with enhanced detection
+  const handlePromptSelect = (event, selectedPrompt) => {
+    if (!selectedPrompt) {
+      setSelectedPrompt(null);
+      return;
+    }
+
+    const promptName = selectedPrompt.name.toLowerCase();
+    const promptSummary = (selectedPrompt.summary || '').toLowerCase();
+    
+    // Enhanced detection logic
+    const isEvaluatorPrompt = 
+      promptName.includes('eval') || 
+      promptName.includes('evaluator') ||
+      promptName.includes('assessment') ||
+      promptName.includes('feedback') ||
+      promptName.includes('judge') ||
+      promptName.includes('rating') ||
+      promptSummary.includes('eval') ||
+      promptSummary.includes('evaluator') ||
+      promptSummary.includes('assessment') ||
+      promptSummary.includes('feedback') ||
+      promptSummary.includes('judge') ||
+      promptSummary.includes('rating');
+
+    if (isEvaluatorPrompt) {
+      // Fill evaluator prompt
+      setFormData(prev => ({
+        ...prev,
+        evaluatorPrompt: selectedPrompt.prompt,
+      }));
+      
+      actions.addNotification({
+        type: 'success',
+        title: '🔍 Evaluator Prompt Filled',
+        message: `Auto-filled evaluator field with "${selectedPrompt.name}"`,
+      });
+    } else {
+      // Fill persona prompt (default)
+      setFormData(prev => ({
+        ...prev,
+        personaPrompt: selectedPrompt.prompt,
+      }));
+      
+      actions.addNotification({
+        type: 'success',
+        title: '👤 Persona Prompt Filled',
+        message: `Auto-filled persona field with "${selectedPrompt.name}"`,
+      });
+    }
+
+    setSelectedPrompt(selectedPrompt);
   };
 
   const validateForm = () => {
@@ -122,7 +218,7 @@ function TpOdForm() {
         tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
       };
 
-      console.log('Submitting TPOD with data:', completeTpodData);
+      console.log('📝 Submitting TPOD:', completeTpodData);
 
       const response = isEditing 
         ? await TpOdService.updateTpOd(id, completeTpodData)
@@ -172,6 +268,10 @@ function TpOdForm() {
     setTags(event.target.value);
   };
 
+  const clearSelectedPrompt = () => {
+    setSelectedPrompt(null);
+  };
+
   if (loading && isEditing && !formData.name) {
     return (
       <Container maxWidth="md" sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
@@ -216,7 +316,7 @@ function TpOdForm() {
         <Card>
           <CardContent sx={{ p: 4 }}>
             <form onSubmit={handleSubmit}>
-              {/* Name Field */}
+              {/* Basic Fields - keeping your original structure */}
               <TextField
                 fullWidth
                 label="Name *"
@@ -230,7 +330,6 @@ function TpOdForm() {
                 inputProps={{ maxLength: 255 }}
               />
 
-              {/* Summary Field */}
               <TextField
                 fullWidth
                 label="Summary"
@@ -246,7 +345,6 @@ function TpOdForm() {
                 inputProps={{ maxLength: 1000 }}
               />
 
-              {/* Difficulty Field */}
               <TextField
                 select
                 fullWidth
@@ -263,7 +361,6 @@ function TpOdForm() {
                 <MenuItem value="hard">Hard</MenuItem>
               </TextField>
 
-              {/* Tags Field */}
               <TextField
                 fullWidth
                 label="Tags"
@@ -276,7 +373,6 @@ function TpOdForm() {
                 placeholder="customer-service, empathy, banking, complaint-handling"
               />
 
-              {/* First Message Field */}
               <TextField
                 fullWidth
                 label="First Message *"
@@ -294,7 +390,154 @@ function TpOdForm() {
 
               <Divider sx={{ my: 3 }} />
 
-              {/* Persona Prompt Field */}
+              {/* Enhanced Prompt Selection Section */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="h6" gutterBottom sx={{ color: '#003DA5', fontWeight: 600, mb: 2 }}>
+                  🔍 Smart Auto-fill from Prompt Library
+                </Typography>
+
+                {/* Connection Status */}
+                {promptsLoading && (
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <CircularProgress size={16} sx={{ mr: 1 }} />
+                      Connecting to prompt service...
+                    </Box>
+                  </Alert>
+                )}
+
+                {promptsError && (
+                  <Alert severity="warning" sx={{ mb: 2 }}>
+                    <Typography variant="body2">
+                      <strong>Connection Issue:</strong> {promptsError}
+                      <br />You can still create TPODs manually or try refreshing.
+                    </Typography>
+                  </Alert>
+                )}
+
+                {allPrompts.length > 0 && !promptsLoading && (
+                  <Alert severity="success" sx={{ mb: 2 }}>
+                    ✅ Connected to prompt library ({allPrompts.length} prompts available)
+                  </Alert>
+                )}
+
+                {/* Prompt Dropdown */}
+                <Autocomplete
+                  options={allPrompts}
+                  getOptionLabel={(option) => `${option.name} ${option.summary ? `- ${option.summary}` : ''}`}
+                  value={selectedPrompt}
+                  onChange={handlePromptSelect}
+                  loading={promptsLoading}
+                  disabled={promptsLoading || allPrompts.length === 0}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Select prompt for auto-fill"
+                      placeholder={
+                        promptsLoading 
+                          ? "Loading prompts from server..." 
+                          : allPrompts.length === 0 
+                          ? "No prompts available - check connection"
+                          : "Choose a prompt (smart detection: persona vs evaluator)"
+                      }
+                      variant="outlined"
+                      InputProps={{
+                        ...params.InputProps,
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <AutoFillIcon color="action" />
+                          </InputAdornment>
+                        ),
+                        endAdornment: (
+                          <>
+                            {promptsLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                            {params.InputProps.endAdornment}
+                          </>
+                        ),
+                      }}
+                    />
+                  )}
+                  renderOption={(props, option) => (
+                    <Box component="li" {...props} sx={{ p: 2, borderBottom: '1px solid #f0f0f0' }}>
+                      <Box sx={{ width: '100%' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#003DA5' }}>
+                          {option.name}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          {option.summary || 'No summary available'}
+                        </Typography>
+                        <Chip
+                          size="small"
+                          label={
+                            (option.name.toLowerCase().includes('eval') || 
+                             (option.summary || '').toLowerCase().includes('eval') ||
+                             option.name.toLowerCase().includes('assessment'))
+                            ? '🔍 → Evaluator Field' 
+                            : '👤 → Persona Field'
+                          }
+                          sx={{ 
+                            fontSize: '0.7rem', 
+                            height: '20px',
+                            bgcolor: (option.name.toLowerCase().includes('eval') || 
+                                     (option.summary || '').toLowerCase().includes('eval') ||
+                                     option.name.toLowerCase().includes('assessment'))
+                              ? '#e3f2fd' : '#f3e5f5',
+                            color: (option.name.toLowerCase().includes('eval') || 
+                                   (option.summary || '').toLowerCase().includes('eval') ||
+                                   option.name.toLowerCase().includes('assessment'))
+                              ? '#1565c0' : '#7b1fa2'
+                          }}
+                        />
+                      </Box>
+                    </Box>
+                  )}
+                  noOptionsText={
+                    promptsLoading 
+                      ? "Loading prompts..." 
+                      : promptsError 
+                      ? "Connection failed - check your API" 
+                      : "No prompts found"
+                  }
+                />
+
+                {/* Selected Prompt Display */}
+                {selectedPrompt && (
+                  <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <Chip
+                      label={`✅ Auto-filled: ${selectedPrompt.name}`}
+                      color="primary"
+                      variant="outlined"
+                      onDelete={clearSelectedPrompt}
+                      sx={{ borderColor: '#003DA5', color: '#003DA5' }}
+                    />
+                  </Box>
+                )}
+
+                {/* Action Buttons */}
+                {(promptsError || allPrompts.length === 0) && !promptsLoading && (
+                  <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+                    <Button
+                      variant="outlined"
+                      onClick={loadAllPrompts}
+                      disabled={promptsLoading}
+                      sx={{ borderColor: '#003DA5', color: '#003DA5' }}
+                    >
+                      🔄 Retry Connection
+                    </Button>
+                    <Button
+                      variant="text"
+                      onClick={() => navigate('/prompts')}
+                      sx={{ color: '#003DA5' }}
+                    >
+                      📝 Manage Prompts
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+
+              <Divider sx={{ my: 3 }} />
+
+              {/* Prompt Text Areas */}
               <TextField
                 fullWidth
                 label="Persona Prompt *"
@@ -309,7 +552,6 @@ function TpOdForm() {
                 rows={6}
               />
 
-              {/* Evaluator Prompt Field */}
               <TextField
                 fullWidth
                 label="Evaluator Prompt *"
@@ -361,15 +603,14 @@ function TpOdForm() {
           </CardContent>
         </Card>
 
-        {/* Help Text */}
+        {/* Enhanced Help Text */}
         <Alert severity="info" sx={{ mt: 3 }}>
           <Typography variant="body2">
-            <strong>Tips:</strong>
-            <br />• Use a clear, descriptive name that identifies the training scenario
-            <br />• Set appropriate difficulty level based on complexity
-            <br />• The first message should engage the trainee immediately
-            <br />• Persona prompt defines the customer character behavior
-            <br />• Evaluator prompt should specify criteria for assessing responses
+            <strong>🧠 Smart Auto-fill Guide:</strong>
+            <br />• **Evaluator Prompts**: Names/summaries with "eval", "assessment", "feedback" → fills Evaluator field
+            <br />• **Persona Prompts**: All others → fills Persona field  
+            <br />• **Edit after auto-fill**: You can modify the content before saving
+            <br />• **Manual backup**: If service is down, you can still create TPODs manually
           </Typography>
         </Alert>
       </motion.div>

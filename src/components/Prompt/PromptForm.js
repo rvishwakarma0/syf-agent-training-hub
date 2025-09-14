@@ -12,10 +12,12 @@ import {
   Alert,
   Divider,
   MenuItem,
+  InputAdornment, // ✅ Added for search icon
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
   Save as SaveIcon,
+  Search as SearchIcon, // ✅ Added for search bar
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
@@ -68,11 +70,11 @@ function PromptForm() {
           summary: data.summary || '',
           prompt: data.prompt || '',
         });
-        
+
         // ✅ SET TAGS AND TYPE FROM EXISTING DATA
         setTags(data.tags ? (Array.isArray(data.tags) ? data.tags.join(', ') : data.tags) : '');
         setPromptType(data.type || 'persona-prompt');
-        
+
         // ✅ SET DROPDOWN OPTIONS IF THEY EXIST
         setPromptOptions({
           domain: data.domain || '',
@@ -127,7 +129,7 @@ function PromptForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -144,7 +146,7 @@ function PromptForm() {
 
       console.log('Submitting prompt with all data:', completePromptData);
 
-      const response = isEditing 
+      const response = isEditing
         ? await PromptService.updatePrompt(id, completePromptData)
         : await PromptService.createPrompt(completePromptData);
 
@@ -179,7 +181,7 @@ function PromptForm() {
       ...formData,
       [field]: event.target.value,
     });
-    
+
     if (errors[field]) {
       setErrors({
         ...errors,
@@ -332,6 +334,36 @@ function PromptForm() {
                 rows={8}
                 inputProps={{ maxLength: 4096 }}
               />
+
+
+              {/* ✅ NEW DISABLED SEARCH BAR */}
+              <Card sx={{ mt: 3 }}>
+                <CardContent>
+                  <TextField
+                    fullWidth
+                    label="Search SOP Data"
+                    placeholder="Fetching data from SOP..."
+                    disabled
+                    margin="normal"
+                    variant="outlined"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon color="disabled" />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{
+                      '& .MuiInputBase-input.Mui-disabled': {
+                        WebkitTextFillColor: '#9e9e9e',
+                      },
+                      '& .MuiInputLabel-root.Mui-disabled': {
+                        color: '#9e9e9e',
+                      },
+                    }}
+                  />
+                </CardContent>
+              </Card>
 
               <Divider sx={{ my: 3 }} />
 

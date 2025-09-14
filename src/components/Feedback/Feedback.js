@@ -20,59 +20,41 @@ import FeedbackRenderer from './FeedbackRenderer';
  * Common Feedback Component
  * @param {Array} conversationMessages - List of conversation messages
  * @param {string} type - "HF" for Help/Feedback modal, "ES" for End Session without modal
- * @param {Function} feedbackApiCall - API service function to get feedback
  * @param {Function} onClose - Callback when feedback is closed (optional)
  * @param {boolean} open - Control modal open state (for HF type)
- * @param {string} tpodId - Training pod ID (optional)
- * @param {string} sessionId - Session ID (optional)
  */
 const Feedback = ({
   conversationMessages = [],
   type = "HF", // "HF" = Help/Feedback modal, "ES" = End Session no modal
-  feedbackApiCall,
   onClose = () => {},
   open = false,
-  tpodId = null,
-  sessionId = null,
 }) => {
   const navigate = useNavigate();
   const [feedbackContent, setFeedbackContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [hasLoadedFeedback, setHasLoadedFeedback] = useState(false);
 
-  // Get feedback from API
+  // Get feedback content
   const loadFeedback = async () => {
     if (hasLoadedFeedback && feedbackContent) return; // Don't reload if already loaded
 
     setIsLoading(true);
-    setError(null);
 
     try {
-      // Prepare API payload
-      const payload = {
-        conversationMessages,
-        feedbackType: type === "HF" ? "help" : "evaluation",
-        tpodId,
-        sessionId,
-      };
-
-      console.log('🔄 Loading feedback:', payload);
-
-      const response = await feedbackApiCall(payload);
-
-      if (response && response.success) {
-        const content = response.data?.feedback || response.data?.message || '';
-        setFeedbackContent(content);
-        setHasLoadedFeedback(true);
-      } else {
-        throw new Error(response?.error || 'Failed to get feedback');
-      }
+      // Simulate loading delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Set content based on type
+      const content = type === "HF" 
+        ? getFallbackHelpContent()
+        : getFallbackEndSessionContent();
+      
+      setFeedbackContent(content);
+      setHasLoadedFeedback(true);
     } catch (err) {
       console.error('❌ Feedback loading failed:', err);
-      setError(err.message);
       
-      // Set fallback content based on type
+      // Set fallback content
       const fallbackContent = type === "HF" 
         ? getFallbackHelpContent()
         : getFallbackEndSessionContent();
@@ -91,14 +73,15 @@ const Feedback = ({
     }
   }, [open, type, conversationMessages]);
 
-  // Fallback content for help/feedback
+  // Help content
   const getFallbackHelpContent = () => {
     return `## 🎯 Training Tips & Help
+
 
 *Continue practicing to enhance your communication abilities!*`;
   };
 
-  // Fallback content for end session
+  // End session content
   const getFallbackEndSessionContent = () => {
     return `## 🎊 Session Complete - Training Summary
 
@@ -108,6 +91,7 @@ const Feedback = ({
 • **Total Interactions:** ${conversationMessages.length} messages
 • **Training Type:** Communication Skills Practice
 • **Status:** Successfully Completed
+
 **Remember:** Consistent practice leads to mastery. Keep up the great work!
 
 *Thank you for your dedication to learning and improvement.*`;
@@ -157,13 +141,6 @@ const Feedback = ({
     </Box>
   );
 
-  // Error content
-  const ErrorContent = () => (
-    <Alert severity="error" sx={{ mb: 2 }}>
-      {error}. Showing fallback content below.
-    </Alert>
-  );
-
   // Render for HF type (Help/Feedback with modal)
   if (type === "HF") {
     return (
@@ -187,7 +164,6 @@ const Feedback = ({
         
         <DialogContent sx={{ pt: 1 }}>
           {isLoading && <LoadingContent />}
-          {error && !isLoading && <ErrorContent />}
           {!isLoading && feedbackContent && (
             <FeedbackRenderer feedback={feedbackContent} />
           )}
@@ -211,7 +187,6 @@ const Feedback = ({
     return (
       <Box sx={{ width: '100%' }}>
         {isLoading && <LoadingContent />}
-        {error && !isLoading && <ErrorContent />}
         {!isLoading && feedbackContent && (
           <>
             <Box sx={{ mb: 3, textAlign: 'center' }}>

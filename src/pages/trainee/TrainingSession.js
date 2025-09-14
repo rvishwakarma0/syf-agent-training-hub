@@ -34,15 +34,13 @@ import { motion } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
 import VoiceInput from '../../components/VoiceInput/VoiceInput';
 import ReactMarkdown from 'react-markdown';
+import { GET_FEEDBACK_URL, SEND_MSG_CHAT_URL, START_POD_CHAT_URL } from '../../urlConfig';
 
 // Updated apiService for Spring Boot integration
 const apiService = {
   // Start Pod Session
   async startPod(scenarioData) {
 
-    
-
-  const API_BASE_URL = 'http://3.82.22.210:8080/api';
 
     try {
       const tpodMapping = {
@@ -59,7 +57,7 @@ const apiService = {
 
       console.log('🚀 Starting Spring Boot pod session:', payload);
 
-      const response = await fetch(`${API_BASE_URL}/chat/start-pod`, {
+      const response = await fetch(`${START_POD_CHAT_URL}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -97,8 +95,6 @@ const apiService = {
   // Send Message
   async sendMessage(messageData) {
 
-    const API_BASE_URL = 'http://3.82.22.210:8080/api';
-
     try {
       const payload = {
         sessionId: messageData.sessionId,
@@ -108,7 +104,7 @@ const apiService = {
 
       console.log('💬 Sending message to Spring Boot:', payload);
 
-      const response = await fetch(`${API_BASE_URL}/chat/message`, {
+      const response = await fetch(`${SEND_MSG_CHAT_URL}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -370,9 +366,7 @@ function TrainingSession() {
     setFeedbackError(null);
     setFeedbackType(type);
 
-    try {
-      const API_BASE_URL = 'http://localhost:8080/api';
-      
+    try {      
       // Format messages to match your backend structure
       const formattedMessages = messages.map(msg => ({
         role: msg.sender === 'agent' ? 'trainee' : 'customer',
@@ -390,7 +384,7 @@ function TrainingSession() {
 
       console.log('📊 Requesting feedback with payload:', payload);
 
-      const response = await fetch(`${API_BASE_URL}/chat/get-feedback`, {
+      const response = await fetch(`${GET_FEEDBACK_URL}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -47,7 +47,6 @@ import {
 } from 'recharts';
 import { motion } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
-import apiService from '../../services/apiService';
 
 function Analytics() {
   const { state } = useApp();

@@ -1,13 +1,11 @@
 import axios from 'axios';
-
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://3.82.22.210:8080';
-const API_URL = `${API_BASE_URL}/admin/api/tpods`;
+import { TPOD_API_BASE_URL } from '../urlConfig';
 
 const TpOdService = {
   // Get all TPODs
   getAllTpOds: async () => {
     try {
-      const response = await axios.get(API_URL);
+      const response = await axios.get(TPOD_API_BASE_URL);
       return {
         success: true,
         data: response.data,
@@ -24,7 +22,7 @@ const TpOdService = {
   // Get TPOD by ID
   getTpOdById: async (id) => {
     try {
-      const response = await axios.get(`${API_URL}/${id}`);
+      const response = await axios.get(`${TPOD_API_BASE_URL}/${id}`);
       return {
         success: true,
         data: response.data,
@@ -41,7 +39,7 @@ const TpOdService = {
   // Create new TPOD
   createTpOd: async (tpodData) => {
     try {
-      const response = await axios.post(API_URL, tpodData);
+      const response = await axios.post(TPOD_API_BASE_URL, tpodData);
       return {
         success: true,
         data: response.data,
@@ -58,7 +56,7 @@ const TpOdService = {
   // Update TPOD
   updateTpOd: async (id, tpodData) => {
     try {
-      const response = await axios.put(`${API_URL}/${id}`, tpodData);
+      const response = await axios.put(`${TPOD_API_BASE_URL}/${id}`, tpodData);
       return {
         success: true,
         data: response.data,
@@ -75,7 +73,7 @@ const TpOdService = {
   // Delete TPOD
   deleteTpOd: async (id) => {
     try {
-      await axios.delete(`${API_URL}/${id}`);
+      await axios.delete(`${TPOD_API_BASE_URL}/${id}`);
       return {
         success: true,
         message: 'TPOD deleted successfully'
@@ -91,7 +89,7 @@ const TpOdService = {
   // Search TPODs (if you implement backend search)
   searchTpOds: async (keyword) => {
     try {
-      const response = await axios.get(`${API_URL}/search?keyword=${keyword}`);
+      const response = await axios.get(`${TPOD_API_BASE_URL}/search?keyword=${keyword}`);
       return {
         success: true,
         data: response.data,

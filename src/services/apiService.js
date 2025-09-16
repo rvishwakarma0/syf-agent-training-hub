@@ -104,6 +104,52 @@ export const apiService = {
       throw error;
     }
   },
+// ✅ NEW: Get Feedback API Integration
+  async getFeedback(payload) {
+    try {
+      // Validate required fields before making the request
+      if (!payload.tpodId || !payload.messages || payload.messages.length === 0) {
+        throw new Error('tpodId and messages are required');
+      }
+
+      console.log('📊 Requesting feedback for:', payload.tpodId);
+
+      const response = await apiClient.post('/api/chat/get-feedback', payload);
+
+      return {
+        success: true,
+        data: response.data,
+        message: 'Feedback retrieved successfully'
+      };
+    } catch (error) {
+      console.error('❌ Get Feedback API Error:', error);
+
+      // Handle specific error cases
+      if (error.response?.status === 400) {
+        return {
+          success: false,
+          error: 'Invalid request data',
+          details: error.response.data?.message || 'Bad request',
+          fallback: false
+        };
+      } else if (error.response?.status === 500) {
+        return {
+          success: false,
+          error: 'Server error occurred',
+          details: error.response.data?.message || 'Internal server error',
+          fallback: true
+        };
+      }
+
+      return {
+        success: false,
+        error: error.message,
+        fallback: true
+      };
+    }
+  },
+
+
 };
 
 export default apiService;

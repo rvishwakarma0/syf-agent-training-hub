@@ -1,18 +1,38 @@
 import { Button } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
+import {
+  Stop as StopIcon,
+} from '@mui/icons-material';
+import {
+  Box
+} from '@mui/material';
 import { VOICE_TRAINING_MFE_URL } from '../../urlConfig';
 import Feedback from '../../components/Feedback/Feedback';
 
 export default function VoiceTraining() {
-  let chatHistory = "";
+
   const { tpodId } = useParams();   // ✅ get tpodId from route
   const [feedback, setFeedback] = useState(false);
   const [session, setSession] = useState(false);
+  const [chatHistory, setChatHistory] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(crypto.randomUUID()); 
+  const userId = JSON.parse(localStorage.getItem('user'))?.id;
 
   window.addEventListener('message', (event) => {
     if (event.data?.type === 'chatHistory') {
-      chatHistory = event.data.data;
+      try{
+        const ch1 = JSON.parse(event.data.data);
+        const ch = ch1.map(msg => ({
+          role: msg.role === "USER" ? "trainee" : "customer",
+          message: msg.message
+        }));
+        if(ch.length > chatHistory.length) 
+        setChatHistory(ch);
+      } catch(err) {
+        console.error("Error parsing chat history", err);
+        setChatHistory([]);
+      }
     }
   });
 
@@ -31,36 +51,45 @@ export default function VoiceTraining() {
 
   return (
     <>
-      <Button
-        onClick={endSession}
-        style={{
-          float: "right",
-          backgroundColor: "#f44336ff",
-          color: "white",
-          border: "none",
-          margin: "8px 16px",
-          borderRadius: "4px",
-          cursor: "pointer"
-        }}
-      >
-        End session
-      </Button>
-
-      <Button
-        onClick={getFeedback}
-        style={{
-          float: "right",
-          backgroundColor: "#929341ff",
-          color: "white",
-          border: "none",
-          margin: "8px 16px",
-          borderRadius: "4px",
-          cursor: "pointer"
-        }}
-      >
-        Help & feedback
-      </Button>
-        {session ? <> <Feedback conversationMessages={chatHistory} type = "ES" onClose={()=> setFeedback(false)} open={feedback}/></> :
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Button
+          variant="outlined"
+          color="error"
+          onClick={getFeedback}
+          disabled={session}
+          sx={{
+            ml: 1,
+            borderColor: '#eef436ff',
+            color: '#f4eb36ff',
+            '&:hover': {
+              bgcolor: 'rgba(228, 190, 64, 0.1)',
+              borderColor: '#d3cd2fff',
+            }
+          }}
+        >
+          <StopIcon sx={{ mr: 1 }} />
+          Help & Feedback
+        </Button>
+        <Button
+          variant="outlined"
+          color="error"
+          onClick={endSession}
+          disabled={session}
+          sx={{
+            ml: 1,
+            borderColor: '#F44336',
+            color: '#F44336',
+            '&:hover': {
+              bgcolor: 'rgba(244, 67, 54, 0.1)',
+              borderColor: '#D32F2F',
+            }
+          }}
+        >
+          <StopIcon sx={{ mr: 1 }} />
+          End Session
+        </Button>
+      </Box>
+        {session ? <> <Feedback conversationMessages={chatHistory} type = "ES" tpodId={tpodId} userId={userId} sessionId={currentSessionId} onClose={()=> setFeedback(false)} open={feedback}/></> :
           <div style={{ height: "80vh", width: "100%" }}>
           <iframe
             src={`${VOICE_TRAINING_MFE_URL}?tpodId=${tpodId}`}  // ✅ inject tpodId
@@ -73,7 +102,7 @@ export default function VoiceTraining() {
         </div>
         }
 
-      <Feedback conversationMessages={chatHistory} onClose={()=> setFeedback(false)} open={feedback}/>
+      {chatHistory && <Feedback conversationMessages={chatHistory} tpodId={tpodId} userId={userId} sessionId={currentSessionId} onClose={()=> setFeedback(false)} open={feedback}/>}
     </>
   );
 }

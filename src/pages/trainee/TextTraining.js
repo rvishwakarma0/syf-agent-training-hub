@@ -27,6 +27,7 @@ import { motion } from 'framer-motion';
 import VoiceInput from '../../components/VoiceInput/VoiceInput';
 import apiService from '../../services/apiService';
 import TpOdService from '../../services/TpOdService';
+import Feedback from '../../components/Feedback/Feedback';
 
 const TextTraining = () => {
   const { tpodId } = useParams();
@@ -42,7 +43,9 @@ const TextTraining = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [useVoiceInput, setUseVoiceInput] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
-
+  const [feedback, setFeedback] = useState(false);
+  const [session, setSession] = useState(true);
+    const [transformedMessages, setTransformedMessages] = useState([]);
   const hasInitialized = useRef(false);
   const [tpod, settpod] = useState({});
 
@@ -53,28 +56,24 @@ useEffect(() => {
   const initializeSession = async () => {
     setIsLoading(true);
     setConnectionStatus("connecting");
-
+    const msgs = [];
     try {
       // ✅ Run both APIs in parallel
       const [tpodData, podResponse] = await Promise.all([
         TpOdService.getTpOdById(tpodId),
         apiService.startPod({ tpodId, userId }),
       ]);
-
       // ✅ Set tpod data
       settpod(tpodData);
-
       // ✅ Build chat messages
-      const msgs = [];
-      if (tpodData?.firstMessage) {
+      if (tpodData?.data?.firstMessage) {
         msgs.push({
           id: nanoid(5),
           sender: "agent",
-          text: tpodData.firstMessage,
-          timestamp: new Date(),
+          text: tpodData?.data?.firstMessage,
+          timestamp: new Date().toISOString(),
         });
       }
-
       if (podResponse?.success) {
         msgs.push({
           id: nanoid(5),
@@ -82,7 +81,7 @@ useEffect(() => {
           text: podResponse.data.message,
           timestamp: podResponse.data.timestamp,
         });
-
+        console.log("from useEffect", msgs);
         setMessages(msgs);
         setCurrentSessionId(podResponse.data.sessionId);
         setConnectionStatus("connected");
@@ -105,6 +104,8 @@ useEffect(() => {
 
   // Auto-scroll to bottom
   useEffect(() => {
+    console.log(messages)
+    setTransformedMessages(transformMessages());
     scrollToBottom();
   }, [messages]);
 
@@ -130,6 +131,13 @@ useEffect(() => {
       handleSendMessage(safeTranscript);
     }
   };
+
+  const transformMessages = () => { 
+    return messages.map(msg => ({
+      role: msg.sender === 'agent' ? 'trainee' : 'customer',
+      message: msg.text || ""
+    }));  
+  }
 
   // Send message to Spring Boot API
   const handleSendMessage = async (messageOverride = null) => {
@@ -183,12 +191,6 @@ useEffect(() => {
   };
 
 
-  // Handle end session
-  const handleEndSession = () => {
-    // TODO HELP AND FEEDBACK COMPONENT 
-
-  };
-
   // Loading state
   if (isLoading && messages.length === 0) {
     return (
@@ -230,7 +232,26 @@ useEffect(() => {
             <Button
               variant="outlined"
               color="error"
-              onClick={handleEndSession}
+              onClick={() => setFeedback(true)}
+              disabled={!session}
+              sx={{
+                ml: 1,
+                borderColor: '#eef436ff',
+                color: '#f4eb36ff',
+                '&:hover': {
+                  bgcolor: 'rgba(228, 190, 64, 0.1)',
+                  borderColor: '#d3cd2fff',
+                }
+              }}
+            >
+              <StopIcon sx={{ mr: 1 }} />
+              Help & Feedback
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={() => setSession(false)}
+              disabled={!session}
               sx={{
                 ml: 1,
                 borderColor: '#F44336',
@@ -249,7 +270,7 @@ useEffect(() => {
       </Paper>
 
       {/* Main Chat Area - Full Width */}
-      <Card sx={{ height: { xs: '70vh', md: '75vh' }, display: 'flex', flexDirection: 'column' }}>
+      {session ? (<Card sx={{ height: { xs: '70vh', md: '75vh' }, display: 'flex', flexDirection: 'column' }}>
         {/* Chat Header */}
         <Box sx={{ p: 2, bgcolor: 'grey.50', borderBottom: '1px solid', borderColor: 'divider' }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -435,7 +456,10 @@ useEffect(() => {
             </Box>
           )}
         </Box>
-      </Card>
+      </Card>): (<Feedback conversationMessages={transformedMessages} type = "ES" tpodId={tpodId} userId={userId} sessionId={currentSessionId} onClose={()=> setFeedback(false)} open={feedback}/>)}
+      
+      <Feedback conversationMessages={transformedMessages} tpodId={tpodId} userId={userId} sessionId={currentSessionId} onClose={()=> setFeedback(false)} open={feedback}/>
+
     </Container>
   );
 };

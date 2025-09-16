@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -15,6 +15,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import FeedbackRenderer from './FeedbackRenderer';
+import apiService from '../../services/apiService';
 
 /**
  * Common Feedback Component
@@ -25,6 +26,9 @@ import FeedbackRenderer from './FeedbackRenderer';
  */
 const Feedback = ({
   conversationMessages = [],
+  userId,
+  sessionId,
+  tpodId=null,
   type = "HF", // "HF" = Help/Feedback modal, "ES" = End Session no modal
   onClose = () => {},
   open = false,
@@ -32,46 +36,44 @@ const Feedback = ({
   const navigate = useNavigate();
   const [feedbackContent, setFeedbackContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [hasLoadedFeedback, setHasLoadedFeedback] = useState(false);
-
+  let messagesKey = "";
+  console.log("Feedback props:", { conversationMessages, type, userId, sessionId, tpodId });
   // Get feedback content
   const loadFeedback = async () => {
-    if (hasLoadedFeedback && feedbackContent) return; // Don't reload if already loaded
-
     setIsLoading(true);
-
     try {
-      // Simulate loading delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Set content based on type
-      const content = type === "HF" 
-        ? getFallbackHelpContent()
-        : getFallbackEndSessionContent();
-      
-      setFeedbackContent(content);
-      setHasLoadedFeedback(true);
+        messagesKey = JSON.stringify(conversationMessages);
+        const response = apiService.getFeedback({
+          tpodId,
+          userId,
+          sessionId,
+          messages: conversationMessages
+        });
+        console.log("response",response);
+        setFeedbackContent((await response).data.message);
     } catch (err) {
       console.error('❌ Feedback loading failed:', err);
-      
       // Set fallback content
       const fallbackContent = type === "HF" 
         ? getFallbackHelpContent()
         : getFallbackEndSessionContent();
       
       setFeedbackContent(fallbackContent);
-      setHasLoadedFeedback(true);
     } finally {
       setIsLoading(false);
     }
   };
 
+  
+
+
   // Load feedback when component mounts or when opened
   React.useEffect(() => {
-    if ((type === "HF" && open) || type === "ES") {
+    const msgKeyCheck = JSON.stringify(conversationMessages);
+    if (messagesKey != msgKeyCheck && ((type === "HF" && open) || type === "ES")) {
       loadFeedback();
     }
-  }, [open, type, conversationMessages]);
+  }, [open, type,tpodId]);
 
   // Help content
   const getFallbackHelpContent = () => {

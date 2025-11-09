@@ -13,3 +13,5 @@ export const TPOD_API_BASE_URL = API_BASE_URL + "/admin/api/tpods";
 
 // Voice Training UI MFE
 export const VOICE_TRAINING_MFE_URL = "http://localhost:5173";
+
+export const WEBHOOK_BASE_URL = "ws://localhost:8081";

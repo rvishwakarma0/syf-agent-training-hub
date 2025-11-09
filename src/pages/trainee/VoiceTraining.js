@@ -7,8 +7,8 @@ import {
 import {
   Box
 } from '@mui/material';
-import { VOICE_TRAINING_MFE_URL } from '../../urlConfig';
 import Feedback from '../../components/Feedback/Feedback';
+import VoiceStreamComponent from '../../components/VoiceStream/VoiceStreamComponent';
 
 export default function VoiceTraining() {
 
@@ -19,22 +19,16 @@ export default function VoiceTraining() {
   const [currentSessionId, setCurrentSessionId] = useState(crypto.randomUUID()); 
   const userId = JSON.parse(localStorage.getItem('user'))?.id;
 
-  window.addEventListener('message', (event) => {
-    if (event.data?.type === 'chatHistory') {
-      try{
-        const ch1 = JSON.parse(event.data.data);
-        const ch = ch1.map(msg => ({
-          role: msg.role === "USER" ? "trainee" : "customer",
-          message: msg.message
-        }));
-        if(ch.length > chatHistory.length) 
-        setChatHistory(ch);
-      } catch(err) {
-        console.error("Error parsing chat history", err);
-        setChatHistory([]);
-      }
+  const handleChatHistoryUpdate = (history) => {
+    // Convert the chat history format from WebSocket to the format expected by Feedback component
+    const convertedHistory = history.map(msg => ({
+      role: msg.role === "USER" ? "trainee" : "customer",
+      message: msg.message
+    }));
+    if(convertedHistory.length > chatHistory.length) {
+      setChatHistory(convertedHistory);
     }
-  });
+  };
 
   const endSession = () => {
     setSession(true);
@@ -90,16 +84,10 @@ export default function VoiceTraining() {
         </Button>
       </Box>
         {session ? <> <Feedback conversationMessages={chatHistory} type = "ES" tpodId={tpodId} userId={userId} sessionId={currentSessionId} onClose={()=> setFeedback(false)} open={feedback}/></> :
-          <div style={{ height: "80vh", width: "100%" }}>
-          <iframe
-            src={`${VOICE_TRAINING_MFE_URL}?tpodId=${tpodId}`}  // ✅ inject tpodId
-            title="Voice Chat App"
-            width="100%"
-            height="100%"
-            style={{ border: "none" }}
-            allow="microphone; autoplay"
+          <VoiceStreamComponent 
+            tpodId={tpodId} 
+            onChatHistoryUpdate={handleChatHistoryUpdate}
           />
-        </div>
         }
 
       {chatHistory && <Feedback conversationMessages={chatHistory} tpodId={tpodId} userId={userId} sessionId={currentSessionId} onClose={()=> setFeedback(false)} open={feedback}/>}

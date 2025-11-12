@@ -22,60 +22,72 @@ export default function VoiceTraining() {
 
   useEffect(() => {
     const el = containerRef.current || document.documentElement;
-    const request =
-      (el && el.requestFullscreen) ||
-      (el && el.webkitRequestFullscreen) ||
-      (el && el.mozRequestFullScreen) ||
-      (el && el.msRequestFullscreen);
-    if (request) {
-      try { request.call(el); } catch (e) {}
-    }
+    if (!el) return;
+    try {
+      if (el.requestFullscreen) {
+        const p = el.requestFullscreen({ navigationUI: 'hide' });
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      } else if (el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen();
+      } else if (el.mozRequestFullScreen) {
+        el.mozRequestFullScreen();
+      } else if (el.msRequestFullscreen) {
+        el.msRequestFullscreen();
+      }
+    } catch (e) {}
     return () => {
       const d = document;
-      const exit =
-        d.exitFullscreen ||
-        d.webkitExitFullscreen ||
-        d.mozCancelFullScreen ||
-        d.msExitFullscreen;
-      if (
-        exit &&
-        (d.fullscreenElement ||
-          d.webkitFullscreenElement ||
-          d.mozFullScreenElement ||
-          d.msFullscreenElement)
-      ) {
-        try { exit.call(d); } catch (e) {}
+      const isFs =
+        d.fullscreenElement || d.webkitFullscreenElement || d.mozFullScreenElement || d.msFullscreenElement;
+      if (isFs) {
+        try {
+          if (d.exitFullscreen) {
+            const p = d.exitFullscreen();
+            if (p && typeof p.catch === 'function') p.catch(() => {});
+          } else if (d.webkitExitFullscreen) {
+            d.webkitExitFullscreen();
+          } else if (d.mozCancelFullScreen) {
+            d.mozCancelFullScreen();
+          } else if (d.msExitFullscreen) {
+            d.msExitFullscreen();
+          }
+        } catch (e) {}
       }
     };
   }, []);
 
-  window.addEventListener('message', (event) => {
-    if (event.data?.type === 'chatHistory') {
-      try{
-        const ch1 = JSON.parse(event.data.data);
-        const ch = ch1.map(msg => ({
-          role: msg.role === "USER" ? "trainee" : "customer",
-          message: msg.message
-        }));
-        if(ch.length > chatHistory.length) 
-        setChatHistory(ch);
-      } catch(err) {
-        console.error("Error parsing chat history", err);
-        setChatHistory([]);
+  useEffect(() => {
+    const handler = (event) => {
+      if (event.data?.type === 'chatHistory') {
+        try {
+          const ch = JSON.parse(event.data.data);
+          setChatHistory(prev => (ch.length > prev.length ? ch : prev));
+        } catch (err) {
+          console.error("Error parsing chat history", err);
+          setChatHistory([]);
+        }
       }
-    }
-  });
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
 
   const exitFullscreen = () => {
     const d = document;
-    const exit =
-      d.exitFullscreen ||
-      d.webkitExitFullscreen ||
-      d.mozCancelFullScreen ||
-      d.msExitFullscreen;
-    if (exit) {
-      try { exit.call(d); } catch (e) {}
-    }
+    try {
+      const isFs = d.fullscreenElement || d.webkitFullscreenElement || d.mozFullScreenElement || d.msFullscreenElement;
+      if (!isFs) return;
+      if (d.exitFullscreen) {
+        const p = d.exitFullscreen();
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      } else if (d.webkitExitFullscreen) {
+        d.webkitExitFullscreen();
+      } else if (d.mozCancelFullScreen) {
+        d.mozCancelFullScreen();
+      } else if (d.msExitFullscreen) {
+        d.msExitFullscreen();
+      }
+    } catch (e) {}
   };
 
   const endSession = () => {

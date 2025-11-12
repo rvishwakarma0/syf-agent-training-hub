@@ -1,5 +1,5 @@
 import { Button } from '@mui/material';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Stop as StopIcon,
@@ -18,6 +18,36 @@ export default function VoiceTraining() {
   const [chatHistory, setChatHistory] = useState([]);
   const [currentSessionId, setCurrentSessionId] = useState(crypto.randomUUID()); 
   const userId = JSON.parse(localStorage.getItem('user'))?.id;
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const el = containerRef.current || document.documentElement;
+    const request =
+      (el && el.requestFullscreen) ||
+      (el && el.webkitRequestFullscreen) ||
+      (el && el.mozRequestFullScreen) ||
+      (el && el.msRequestFullscreen);
+    if (request) {
+      try { request.call(el); } catch (e) {}
+    }
+    return () => {
+      const d = document;
+      const exit =
+        d.exitFullscreen ||
+        d.webkitExitFullscreen ||
+        d.mozCancelFullScreen ||
+        d.msExitFullscreen;
+      if (
+        exit &&
+        (d.fullscreenElement ||
+          d.webkitFullscreenElement ||
+          d.mozFullScreenElement ||
+          d.msFullscreenElement)
+      ) {
+        try { exit.call(d); } catch (e) {}
+      }
+    };
+  }, []);
 
   window.addEventListener('message', (event) => {
     if (event.data?.type === 'chatHistory') {
@@ -36,7 +66,20 @@ export default function VoiceTraining() {
     }
   });
 
+  const exitFullscreen = () => {
+    const d = document;
+    const exit =
+      d.exitFullscreen ||
+      d.webkitExitFullscreen ||
+      d.mozCancelFullScreen ||
+      d.msExitFullscreen;
+    if (exit) {
+      try { exit.call(d); } catch (e) {}
+    }
+  };
+
   const endSession = () => {
+    exitFullscreen();
     setSession(true);
     console.log("chatHistory", chatHistory);
     // in this method you  can call you feedback API with chatHistory and display in modal then close the iframe or navigate user to some training center
@@ -50,7 +93,7 @@ export default function VoiceTraining() {
 
 
   return (
-    <>
+    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Button
           variant="outlined"
@@ -90,7 +133,7 @@ export default function VoiceTraining() {
         </Button>
       </Box>
         {session ? <> <Feedback conversationMessages={chatHistory} type = "ES" tpodId={tpodId} userId={userId} sessionId={currentSessionId} onClose={()=> setFeedback(false)} open={feedback}/></> :
-          <div style={{ height: "80vh", width: "100%" }}>
+          <div style={{ flex: 1, width: "100%", minHeight: 0 }}>
           <iframe
             src={`${VOICE_TRAINING_MFE_URL}?tpodId=${tpodId}`}  // ✅ inject tpodId
             title="Voice Chat App"
@@ -103,6 +146,6 @@ export default function VoiceTraining() {
         }
 
       {chatHistory && <Feedback conversationMessages={chatHistory} tpodId={tpodId} userId={userId} sessionId={currentSessionId} onClose={()=> setFeedback(false)} open={feedback}/>}
-    </>
+    </div>
   );
 }
